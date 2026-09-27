@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import com.antigravity.btremote.hid.HidConstants
 import com.antigravity.btremote.model.KeyboardColorTheme
 import com.antigravity.btremote.model.KeyboardFont
+import com.antigravity.btremote.model.TargetPlatform
 import com.antigravity.btremote.theme.SurfaceBorder
 import com.antigravity.btremote.theme.SurfaceDark
 import com.antigravity.btremote.theme.SurfaceElevated
@@ -71,6 +72,7 @@ import com.antigravity.btremote.theme.TextSecondary
 
 @Composable
 fun KeyboardScreen(
+    targetPlatform: TargetPlatform = TargetPlatform.WINDOWS,
     stickyCtrl: Boolean,
     stickyAlt: Boolean,
     stickyShift: Boolean,
@@ -133,7 +135,7 @@ fun KeyboardScreen(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = if (isLandscape) "LANDSCAPE PC" else "PORTRAIT",
+                        text = if (isLandscape) "LANDSCAPE ${targetPlatform.shortName.uppercase()}" else "PORTRAIT",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isLandscape) colorTheme.accentColor else TextSecondary
@@ -142,11 +144,18 @@ fun KeyboardScreen(
             }
 
             // Quick Modifiers Indicator (Landscape & Portrait)
+            val altBadgeLabel = if (targetPlatform == TargetPlatform.APPLE) "⌥" else "ALT"
+            val guiBadgeLabel = when (targetPlatform) {
+                TargetPlatform.APPLE -> "⌘"
+                TargetPlatform.ANDROID -> "🔍"
+                TargetPlatform.SMART_TV -> "HOME"
+                TargetPlatform.WINDOWS -> "WIN"
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 SmallModifierBadge("CTRL", stickyCtrl, colorTheme) { onToggleCtrl(); onHaptic() }
-                SmallModifierBadge("ALT", stickyAlt, colorTheme) { onToggleAlt(); onHaptic() }
+                SmallModifierBadge(altBadgeLabel, stickyAlt, colorTheme) { onToggleAlt(); onHaptic() }
                 SmallModifierBadge("SHIFT", stickyShift, colorTheme) { onToggleShift(); onHaptic() }
-                SmallModifierBadge("WIN", stickyGui, colorTheme) { onToggleGui(); onHaptic() }
+                SmallModifierBadge(guiBadgeLabel, stickyGui, colorTheme) { onToggleGui(); onHaptic() }
             }
 
             // Theme & Font Customizer Toggle
@@ -194,6 +203,7 @@ fun KeyboardScreen(
         // Render Portrait vs Landscape Keyboard Layout
         if (isLandscape) {
             LandscapeKeyboardLayout(
+                targetPlatform = targetPlatform,
                 colorTheme = colorTheme,
                 fontFamily = fontOption.fontFamily,
                 stickyCtrl = stickyCtrl,
@@ -213,6 +223,7 @@ fun KeyboardScreen(
             )
         } else {
             PortraitKeyboardLayout(
+                targetPlatform = targetPlatform,
                 textInput = textInput,
                 onTextInputChanged = { textInput = it },
                 onSendText = onSendText,
@@ -242,6 +253,7 @@ fun KeyboardScreen(
 // -------------------------------------------------------------
 @Composable
 fun LandscapeKeyboardLayout(
+    targetPlatform: TargetPlatform = TargetPlatform.WINDOWS,
     colorTheme: KeyboardColorTheme,
     fontFamily: FontFamily,
     stickyCtrl: Boolean,
@@ -381,8 +393,15 @@ fun LandscapeKeyboardLayout(
                     Text("SPACE", color = colorTheme.keyTextColor.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontFamily = fontFamily)
                 }
 
-                ThemedModifierKey("ALT", stickyAlt, colorTheme, fontFamily, { onToggleAlt(); onHaptic() }, modifier = Modifier.weight(1.1f), height = keyH)
-                ThemedModifierKey("WIN", stickyGui, colorTheme, fontFamily, { onToggleGui(); onHaptic() }, modifier = Modifier.weight(1f), height = keyH)
+                val altLabel = if (targetPlatform == TargetPlatform.APPLE) "⌥ OPT" else "ALT"
+                val guiLabel = when (targetPlatform) {
+                    TargetPlatform.APPLE -> "⌘ CMD"
+                    TargetPlatform.ANDROID -> "SEARCH"
+                    TargetPlatform.SMART_TV -> "HOME"
+                    TargetPlatform.WINDOWS -> "WIN"
+                }
+                ThemedModifierKey(altLabel, stickyAlt, colorTheme, fontFamily, { onToggleAlt(); onHaptic() }, modifier = Modifier.weight(1.1f), height = keyH)
+                ThemedModifierKey(guiLabel, stickyGui, colorTheme, fontFamily, { onToggleGui(); onHaptic() }, modifier = Modifier.weight(1f), height = keyH)
                 ThemedModifierKey("CTRL", stickyCtrl, colorTheme, fontFamily, { onToggleCtrl(); onHaptic() }, modifier = Modifier.weight(1.2f), height = keyH)
             }
         }
@@ -409,14 +428,24 @@ fun LandscapeKeyboardLayout(
             }
 
             // Row 2 & 3: Quick Productivity Shortcuts in Landscape
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedShortcutPill("Copy (Ctrl+C)", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x06.toByte()); onHaptic() }
-                ThemedShortcutPill("Paste (Ctrl+V)", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x19.toByte()); onHaptic() }
-            }
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedShortcutPill("Alt+Tab", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LALT, HidConstants.KEY_TAB); onHaptic() }
-                ThemedShortcutPill("Win+D", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x07.toByte()); onHaptic() }
+            if (targetPlatform == TargetPlatform.APPLE) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                    ThemedShortcutPill("⌘+C", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x06.toByte()); onHaptic() }
+                    ThemedShortcutPill("⌘+V", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x19.toByte()); onHaptic() }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                    ThemedShortcutPill("⌘+Tab", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, HidConstants.KEY_TAB); onHaptic() }
+                    ThemedShortcutPill("Spotlight", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, HidConstants.KEY_SPACE); onHaptic() }
+                }
+            } else {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                    ThemedShortcutPill("Copy (Ctrl+C)", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x06.toByte()); onHaptic() }
+                    ThemedShortcutPill("Paste (Ctrl+V)", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x19.toByte()); onHaptic() }
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                    ThemedShortcutPill("Alt+Tab", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LALT, HidConstants.KEY_TAB); onHaptic() }
+                    ThemedShortcutPill("Win+D", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x07.toByte()); onHaptic() }
+                }
             }
 
             // Row 4: Arrow UP (centered)
@@ -439,6 +468,7 @@ fun LandscapeKeyboardLayout(
 // -------------------------------------------------------------
 @Composable
 fun PortraitKeyboardLayout(
+    targetPlatform: TargetPlatform = TargetPlatform.WINDOWS,
     textInput: String,
     onTextInputChanged: (String) -> Unit,
     onSendText: (String) -> Unit,
@@ -473,10 +503,16 @@ fun PortraitKeyboardLayout(
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val targetName = when (targetPlatform) {
+                TargetPlatform.WINDOWS -> "PC"
+                TargetPlatform.ANDROID -> "Android"
+                TargetPlatform.APPLE -> "Apple device"
+                TargetPlatform.SMART_TV -> "Smart TV"
+            }
             OutlinedTextField(
                 value = textInput,
                 onValueChange = onTextInputChanged,
-                placeholder = { Text("Type or paste text to stream to PC...", fontSize = 12.sp, color = TextMuted, fontFamily = fontOption.fontFamily) },
+                placeholder = { Text("Type or paste text to stream to $targetName...", fontSize = 12.sp, color = TextMuted, fontFamily = fontOption.fontFamily) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = {
@@ -519,19 +555,26 @@ fun PortraitKeyboardLayout(
         Spacer(modifier = Modifier.height(8.dp))
 
         // Sticky Modifiers Row
+        val altLabel = if (targetPlatform == TargetPlatform.APPLE) "⌥ OPT" else "ALT"
+        val guiLabel = when (targetPlatform) {
+            TargetPlatform.APPLE -> "⌘ CMD"
+            TargetPlatform.ANDROID -> "SEARCH"
+            TargetPlatform.SMART_TV -> "HOME"
+            TargetPlatform.WINDOWS -> "WIN / ⌘"
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             ThemedModifierKey("CTRL", stickyCtrl, colorTheme, fontOption.fontFamily, { onToggleCtrl(); onHaptic() }, Modifier.weight(1f))
-            ThemedModifierKey("ALT", stickyAlt, colorTheme, fontOption.fontFamily, { onToggleAlt(); onHaptic() }, Modifier.weight(1f))
+            ThemedModifierKey(altLabel, stickyAlt, colorTheme, fontOption.fontFamily, { onToggleAlt(); onHaptic() }, Modifier.weight(1f))
             ThemedModifierKey("SHIFT", stickyShift, colorTheme, fontOption.fontFamily, { onToggleShift(); onHaptic() }, Modifier.weight(1f))
-            ThemedModifierKey("WIN / ⌘", stickyGui, colorTheme, fontOption.fontFamily, { onToggleGui(); onHaptic() }, Modifier.weight(1f))
+            ThemedModifierKey(guiLabel, stickyGui, colorTheme, fontOption.fontFamily, { onToggleGui(); onHaptic() }, Modifier.weight(1f))
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Quick PC Shortcuts Strip (Horizontal Scroll)
+        // Quick Platform Shortcuts Strip (Horizontal Scroll)
         val shortcutsScroll = rememberScrollState()
         Row(
             modifier = Modifier
@@ -539,15 +582,47 @@ fun PortraitKeyboardLayout(
                 .horizontalScroll(shortcutsScroll),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            ThemedShortcutPill("Copy (Ctrl+C)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x06.toByte()); onHaptic() }
-            ThemedShortcutPill("Paste (Ctrl+V)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x19.toByte()); onHaptic() }
-            ThemedShortcutPill("Select All (Ctrl+A)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x04.toByte()); onHaptic() }
-            ThemedShortcutPill("Undo (Ctrl+Z)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x1D.toByte()); onHaptic() }
-            ThemedShortcutPill("Cut (Ctrl+X)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x1B.toByte()); onHaptic() }
-            ThemedShortcutPill("Save (Ctrl+S)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x16.toByte()); onHaptic() }
-            ThemedShortcutPill("Alt+Tab", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LALT, HidConstants.KEY_TAB); onHaptic() }
-            ThemedShortcutPill("Win+D", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x07.toByte()); onHaptic() }
-            ThemedShortcutPill("Alt+F4", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LALT, HidConstants.KEY_F4); onHaptic() }
+            when (targetPlatform) {
+                TargetPlatform.APPLE -> {
+                    ThemedShortcutPill("Copy (⌘+C)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x06.toByte()); onHaptic() }
+                    ThemedShortcutPill("Paste (⌘+V)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x19.toByte()); onHaptic() }
+                    ThemedShortcutPill("Select All (⌘+A)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x04.toByte()); onHaptic() }
+                    ThemedShortcutPill("Undo (⌘+Z)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x1D.toByte()); onHaptic() }
+                    ThemedShortcutPill("Cut (⌘+X)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x1B.toByte()); onHaptic() }
+                    ThemedShortcutPill("Save (⌘+S)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x16.toByte()); onHaptic() }
+                    ThemedShortcutPill("⌘+Tab", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, HidConstants.KEY_TAB); onHaptic() }
+                    ThemedShortcutPill("Spotlight (⌘+Space)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, HidConstants.KEY_SPACE); onHaptic() }
+                    ThemedShortcutPill("Close (⌘+W)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x1A.toByte()); onHaptic() }
+                }
+                TargetPlatform.ANDROID -> {
+                    ThemedShortcutPill("Back (Esc)", colorTheme, fontOption.fontFamily) { onKeyPress(HidConstants.KEY_ESC, null); onHaptic() }
+                    ThemedShortcutPill("Home (Win+H)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x0B.toByte()); onHaptic() }
+                    ThemedShortcutPill("Recents (Alt+Tab)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LALT, HidConstants.KEY_TAB); onHaptic() }
+                    ThemedShortcutPill("Copy (Ctrl+C)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x06.toByte()); onHaptic() }
+                    ThemedShortcutPill("Paste (Ctrl+V)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x19.toByte()); onHaptic() }
+                    ThemedShortcutPill("Select All (Ctrl+A)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x04.toByte()); onHaptic() }
+                    ThemedShortcutPill("Search (Win)", colorTheme, fontOption.fontFamily) { onKeyPress(HidConstants.KEY_NONE, HidConstants.MOD_LGUI); onHaptic() }
+                    ThemedShortcutPill("Undo (Ctrl+Z)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x1D.toByte()); onHaptic() }
+                }
+                TargetPlatform.SMART_TV -> {
+                    ThemedShortcutPill("Back (Esc)", colorTheme, fontOption.fontFamily) { onKeyPress(HidConstants.KEY_ESC, null); onHaptic() }
+                    ThemedShortcutPill("Home (Win+H)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x0B.toByte()); onHaptic() }
+                    ThemedShortcutPill("Select (Enter)", colorTheme, fontOption.fontFamily) { onKeyPress(HidConstants.KEY_ENTER, null); onHaptic() }
+                    ThemedShortcutPill("Play/Pause (Space)", colorTheme, fontOption.fontFamily) { onKeyPress(HidConstants.KEY_SPACE, null); onHaptic() }
+                    ThemedShortcutPill("Mute", colorTheme, fontOption.fontFamily) { onKeyPress(HidConstants.KEY_MUTE, null); onHaptic() }
+                }
+                TargetPlatform.WINDOWS -> {
+                    ThemedShortcutPill("Copy (Ctrl+C)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x06.toByte()); onHaptic() }
+                    ThemedShortcutPill("Paste (Ctrl+V)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x19.toByte()); onHaptic() }
+                    ThemedShortcutPill("Select All (Ctrl+A)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x04.toByte()); onHaptic() }
+                    ThemedShortcutPill("Undo (Ctrl+Z)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x1D.toByte()); onHaptic() }
+                    ThemedShortcutPill("Cut (Ctrl+X)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x1B.toByte()); onHaptic() }
+                    ThemedShortcutPill("Save (Ctrl+S)", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x16.toByte()); onHaptic() }
+                    ThemedShortcutPill("Alt+Tab", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LALT, HidConstants.KEY_TAB); onHaptic() }
+                    ThemedShortcutPill("Win+D", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x07.toByte()); onHaptic() }
+                    ThemedShortcutPill("Alt+F4", colorTheme, fontOption.fontFamily) { onKeyCombo(HidConstants.MOD_LALT, HidConstants.KEY_F4); onHaptic() }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))

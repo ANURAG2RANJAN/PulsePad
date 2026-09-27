@@ -103,7 +103,20 @@ enum class SoundProfile(val displayName: String, val description: String) {
     OFF("Muted", "Silent operation without acoustic feedback")
 }
 
+enum class TargetPlatform(
+    val id: String,
+    val displayName: String,
+    val shortName: String,
+    val description: String
+) {
+    WINDOWS("windows", "Windows PC", "Windows", "Optimized for Windows 10/11 with Win keys, Task View, and Alt shortcuts"),
+    ANDROID("android", "Android Phone/Tablet", "Android", "Optimized for Android mobile & tablet with Back, Home, Recents & Search"),
+    APPLE("apple", "Apple (iPhone / iPad / Mac)", "Apple", "Optimized for iPhone, iPad & Mac with ⌘ Command, Spotlight & App Switcher"),
+    SMART_TV("tv", "Smart TV / Media Box", "Smart TV", "Optimized for Android TV, FireTV & Apple TV with D-Pad & Media controls")
+}
+
 data class RemoteSettings(
+    val targetPlatform: TargetPlatform = TargetPlatform.WINDOWS,
     val pointerSensitivity: Float = 1.2f,
     val scrollSensitivity: Float = 1.0f,
     val invertScroll: Boolean = false,
@@ -122,5 +135,6 @@ data class RemoteSettings(
 data class PairedDeviceItem(
     val name: String,
     val address: String,
-    val isConnected: Boolean = false
+    val isConnected: Boolean = false,
+    val platform: TargetPlatform = TargetPlatform.WINDOWS
 )

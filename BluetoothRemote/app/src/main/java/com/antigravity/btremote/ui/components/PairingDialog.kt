@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.antigravity.btremote.model.PairedDeviceItem
+import com.antigravity.btremote.model.TargetPlatform
 import com.antigravity.btremote.theme.CyanAccent
 import com.antigravity.btremote.theme.EmeraldSuccess
 import com.antigravity.btremote.theme.RoseError
@@ -55,6 +56,8 @@ import com.antigravity.btremote.theme.TextSecondary
 fun PairingDialog(
     pairedDevices: List<PairedDeviceItem>,
     phoneName: String = "This Phone",
+    selectedPlatform: TargetPlatform = TargetPlatform.WINDOWS,
+    onPlatformSelected: (TargetPlatform) -> Unit = {},
     onDeviceSelected: (String) -> Unit,
     onMakeDiscoverable: () -> Unit,
     onOpenBtSettings: () -> Unit,
@@ -105,7 +108,7 @@ fun PairingDialog(
                                 color = TextPrimary
                             )
                             Text(
-                                text = "Pair & connect to your PC",
+                                text = "Connect to PC, Android, Apple & TV",
                                 fontSize = 12.sp,
                                 color = TextSecondary
                             )
@@ -122,7 +125,57 @@ fun PairingDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Target Device Platform Selector Tabs
+                Text(
+                    text = "TARGET DEVICE TYPE",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextMuted,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    TargetPlatform.values().forEach { platform ->
+                        val isSelected = platform == selectedPlatform
+                        val emoji = when (platform) {
+                            TargetPlatform.WINDOWS -> "💻"
+                            TargetPlatform.ANDROID -> "🤖"
+                            TargetPlatform.APPLE -> "🍎"
+                            TargetPlatform.SMART_TV -> "📺"
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) CyanAccent.copy(alpha = 0.2f) else SurfaceElevated)
+                                .border(
+                                    1.dp,
+                                    if (isSelected) CyanAccent else SurfaceBorder,
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .clickable { onPlatformSelected(platform) }
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = emoji, fontSize = 14.sp)
+                                Text(
+                                    text = platform.shortName,
+                                    fontSize = 10.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) CyanAccent else TextSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Disconnect option if currently connected
                 if (hasConnectedDevice) {
@@ -132,14 +185,14 @@ fun PairingDialog(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = RoseError),
                         border = androidx.compose.foundation.BorderStroke(1.dp, RoseError.copy(alpha = 0.5f))
                     ) {
-                        Text("Disconnect Current PC", fontWeight = FontWeight.SemiBold)
+                        Text("Disconnect Current Device", fontWeight = FontWeight.SemiBold)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
                 // Paired Devices List
                 Text(
-                    text = "PAIRED COMPUTERS & DEVICES",
+                    text = "PAIRED DEVICES",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextMuted,
@@ -187,20 +240,38 @@ fun PairingDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Computer,
-                                        contentDescription = null,
-                                        tint = if (device.isConnected) CyanAccent else TextSecondary,
-                                        modifier = Modifier.size(22.dp)
-                                    )
+                                    val devPlatformEmoji = when (device.platform) {
+                                        TargetPlatform.WINDOWS -> "💻"
+                                        TargetPlatform.ANDROID -> "🤖"
+                                        TargetPlatform.APPLE -> "🍎"
+                                        TargetPlatform.SMART_TV -> "📺"
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(SurfaceDark),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(text = devPlatformEmoji, fontSize = 14.sp)
+                                    }
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
-                                        Text(
-                                            text = device.name,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 14.sp,
-                                            color = TextPrimary
-                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = device.name,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 14.sp,
+                                                color = TextPrimary
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = device.platform.shortName,
+                                                fontSize = 9.sp,
+                                                color = CyanAccent,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                         Text(
                                             text = device.address,
                                             fontSize = 11.sp,
@@ -273,7 +344,14 @@ fun PairingDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // How to pair guide
+                // Dynamic OS-specific pairing guide
+                val guideInstructions = when (selectedPlatform) {
+                    TargetPlatform.WINDOWS -> "1. Tap 'Make Discoverable' above.\n2. On PC: Settings -> Bluetooth & devices -> 'Add device'.\n3. Select '$phoneName'. PulsePad pairs directly as wireless Keyboard & Mouse!"
+                    TargetPlatform.ANDROID -> "1. Tap 'Make Discoverable' above.\n2. On target Android phone/tablet: Settings -> Bluetooth -> 'Pair new device'.\n3. Select '$phoneName' & tap 'Pair'. Native mouse cursor appears immediately on trackpad touch!"
+                    TargetPlatform.APPLE -> "1. Tap 'Make Discoverable' above.\n2. On iPad/iPhone/Mac: Settings -> Bluetooth -> Tap '$phoneName'.\n3. iPhone pointer: Settings -> Accessibility -> Touch -> enable 'AssistiveTouch'. Native on iPad/Mac!"
+                    TargetPlatform.SMART_TV -> "1. Tap 'Make Discoverable' above.\n2. On Smart TV / Box: Settings -> Remotes & Accessories -> 'Add accessory'.\n3. Select '$phoneName'. PulsePad acts as universal TV remote & D-pad!"
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -282,17 +360,20 @@ fun PairingDialog(
                         .padding(10.dp)
                 ) {
                     Column {
-                        Text("💡 Quick Pairing Guide:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CyanAccent)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("💡 Pairing Guide: ", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CyanAccent)
+                            Text(selectedPlatform.displayName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Phone BT Name: $phoneName",
+                            text = "This Phone BT Name: $phoneName",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            "1. Tap 'Make Discoverable' below.\n2. On your PC: Settings -> Bluetooth -> 'Add Device'.\n3. Select '$phoneName'. It pairs directly as your PC's wireless Keyboard & Mouse!",
+                            text = guideInstructions,
                             fontSize = 11.sp,
                             color = TextSecondary,
                             lineHeight = 15.sp

@@ -56,6 +56,8 @@ import com.antigravity.btremote.theme.TextSecondary
 @Composable
 fun TopStatusBar(
     status: ConnectionStatus,
+    targetPlatform: com.antigravity.btremote.model.TargetPlatform,
+    onPlatformChanged: (com.antigravity.btremote.model.TargetPlatform) -> Unit,
     onConnectClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -89,18 +91,39 @@ fun TopStatusBar(
                     color = TextPrimary
                 )
                 Spacer(modifier = Modifier.width(6.dp))
+                // Interactive Target Platform Badge
+                val (platformEmoji, platformTag) = when (targetPlatform) {
+                    com.antigravity.btremote.model.TargetPlatform.WINDOWS -> Pair("💻", "WIN")
+                    com.antigravity.btremote.model.TargetPlatform.ANDROID -> Pair("🤖", "AND")
+                    com.antigravity.btremote.model.TargetPlatform.APPLE -> Pair("🍎", "IOS")
+                    com.antigravity.btremote.model.TargetPlatform.SMART_TV -> Pair("📺", "TV")
+                }
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(CyanAccent.copy(alpha = 0.15f))
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(CyanAccent.copy(alpha = 0.18f))
+                        .border(1.dp, CyanAccent.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                        .clickable {
+                            val next = when (targetPlatform) {
+                                com.antigravity.btremote.model.TargetPlatform.WINDOWS -> com.antigravity.btremote.model.TargetPlatform.ANDROID
+                                com.antigravity.btremote.model.TargetPlatform.ANDROID -> com.antigravity.btremote.model.TargetPlatform.APPLE
+                                com.antigravity.btremote.model.TargetPlatform.APPLE -> com.antigravity.btremote.model.TargetPlatform.SMART_TV
+                                com.antigravity.btremote.model.TargetPlatform.SMART_TV -> com.antigravity.btremote.model.TargetPlatform.WINDOWS
+                            }
+                            onPlatformChanged(next)
+                        }
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
-                    Text(
-                        text = "PC HID",
-                        color = CyanAccent,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = platformEmoji, fontSize = 9.sp)
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = platformTag,
+                            color = CyanAccent,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.width(6.dp))
                 CyberAudioVisualizer()

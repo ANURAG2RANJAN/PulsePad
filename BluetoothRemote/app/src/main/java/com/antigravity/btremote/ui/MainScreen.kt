@@ -174,6 +174,8 @@ fun MainScreen(
             // Top App Bar & Status
             TopStatusBar(
                 status = status,
+                targetPlatform = settings.targetPlatform,
+                onPlatformChanged = { settings = settings.copy(targetPlatform = it) },
                 onConnectClick = {
                     hidManager.refreshPairedDevices()
                     showPairingDialog = true
@@ -202,11 +204,11 @@ fun MainScreen(
                 ) {
                     Text(
                         text = when (status) {
-                            is ConnectionStatus.Connecting -> "Connecting to PC..."
+                            is ConnectionStatus.Connecting -> "Connecting to ${settings.targetPlatform.displayName}..."
                             is ConnectionStatus.BluetoothOff -> "Bluetooth is OFF. Please turn on Bluetooth."
                             is ConnectionStatus.PermissionMissing -> "Bluetooth permissions required to connect."
                             is ConnectionStatus.HidUnsupported -> "HID Device Profile not supported on this phone."
-                            else -> "PC Not Connected - Tap 'Disconnected' above to pair & connect."
+                            else -> "${settings.targetPlatform.shortName} Not Connected - Tap 'Disconnected' above to pair & connect."
                         },
                         color = RoseError,
                         fontSize = 11.sp,
@@ -248,10 +250,23 @@ fun MainScreen(
                             },
                             onMouseWheel = { wheel -> hidManager.sendMouseWheel(wheel) },
                             onMultiKey = { mod, keys -> hidManager.sendMultiKeyCombo(mod, *keys) },
+                            onConsumerKey = { code ->
+                                hidManager.sendConsumerKey(code)
+                                triggerKeyPressSound(false)
+                            },
+                            onKeyPress = { key, mod ->
+                                hidManager.sendKeyPress(key, mod)
+                                triggerKeyPressSound(false)
+                            },
+                            onKeyCombo = { mod, key ->
+                                hidManager.sendKeyCombo(mod, key)
+                                triggerKeyPressSound(false)
+                            },
                             onHaptic = triggerHaptic,
                             onMouseSound = triggerMouseSound
                         )
                         RemoteMode.KEYBOARD -> KeyboardScreen(
+                            targetPlatform = settings.targetPlatform,
                             stickyCtrl = hidManager.stickyCtrl,
                             stickyAlt = hidManager.stickyAlt,
                             stickyShift = hidManager.stickyShift,
@@ -329,6 +344,8 @@ fun MainScreen(
         PairingDialog(
             pairedDevices = pairedDevices,
             phoneName = hidManager.bluetoothAdapter?.name ?: "PulsePad Remote",
+            selectedPlatform = settings.targetPlatform,
+            onPlatformSelected = { settings = settings.copy(targetPlatform = it) },
             onDeviceSelected = { address ->
                 hidManager.connectToDevice(address)
                 showPairingDialog = false

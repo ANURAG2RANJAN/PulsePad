@@ -408,6 +408,16 @@ class BluetoothHidManager(private val context: Context) {
         }
     }
 
+    private fun detectPlatformFromName(name: String): com.antigravity.btremote.model.TargetPlatform {
+        val lower = name.lowercase()
+        return when {
+            lower.contains("ipad") || lower.contains("iphone") || lower.contains("macbook") || lower.contains("apple") || lower.contains("mac") -> com.antigravity.btremote.model.TargetPlatform.APPLE
+            lower.contains("tv") || lower.contains("fire") || lower.contains("chromecast") || lower.contains("shield") || lower.contains("bravia") || lower.contains("roku") -> com.antigravity.btremote.model.TargetPlatform.SMART_TV
+            lower.contains("android") || lower.contains("galaxy") || lower.contains("tab") || lower.contains("pixel") || lower.contains("vivo") || lower.contains("oppo") || lower.contains("xiaomi") || lower.contains("redmi") || lower.contains("realme") || lower.contains("oneplus") -> com.antigravity.btremote.model.TargetPlatform.ANDROID
+            else -> com.antigravity.btremote.model.TargetPlatform.WINDOWS
+        }
+    }
+
     @SuppressLint("MissingPermission")
     fun refreshPairedDevices() {
         val adapter = bluetoothAdapter ?: return
@@ -415,10 +425,12 @@ class BluetoothHidManager(private val context: Context) {
             val bonded = adapter.bondedDevices ?: emptySet()
             val connectedAddress = currentDevice?.address ?: hidDevice?.connectedDevices?.firstOrNull()?.address
             val list = bonded.map { dev ->
+                val devName = dev.name ?: "Unknown Device"
                 PairedDeviceItem(
-                    name = dev.name ?: "Unknown Device",
+                    name = devName,
                     address = dev.address,
-                    isConnected = dev.address == connectedAddress
+                    isConnected = dev.address == connectedAddress,
+                    platform = detectPlatformFromName(devName)
                 )
             }
             _pairedDevices.value = list

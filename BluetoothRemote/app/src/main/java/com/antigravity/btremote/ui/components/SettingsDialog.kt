@@ -42,6 +42,7 @@ import com.antigravity.btremote.model.KeyboardColorTheme
 import com.antigravity.btremote.model.KeyboardFont
 import com.antigravity.btremote.model.RemoteSettings
 import com.antigravity.btremote.model.SoundProfile
+import com.antigravity.btremote.model.TargetPlatform
 import com.antigravity.btremote.theme.CyanAccent
 import com.antigravity.btremote.theme.SurfaceBorder
 import com.antigravity.btremote.theme.SurfaceDark
@@ -106,6 +107,50 @@ fun SettingsDialog(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Target Platform Profile
+                Column {
+                    Text("Target Device Profile", fontSize = 13.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text("Tailors keyboard keys, trackpad gestures & shortcuts", fontSize = 11.sp, color = TextMuted)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        TargetPlatform.values().forEach { platform ->
+                            val isSel = settings.targetPlatform == platform
+                            val (emoji, tag) = when (platform) {
+                                TargetPlatform.WINDOWS -> Pair("💻", "Windows")
+                                TargetPlatform.ANDROID -> Pair("🤖", "Android")
+                                TargetPlatform.APPLE -> Pair("🍎", "Apple")
+                                TargetPlatform.SMART_TV -> Pair("📺", "Smart TV")
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isSel) CyanAccent.copy(alpha = 0.2f) else SurfaceElevated)
+                                    .border(1.dp, if (isSel) CyanAccent else SurfaceBorder, RoundedCornerShape(10.dp))
+                                    .clickable { onSettingsChanged(settings.copy(targetPlatform = platform)) }
+                                    .padding(vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(text = emoji, fontSize = 16.sp)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = tag,
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSel) CyanAccent else TextSecondary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Mouse Pointer Sensitivity
                 Column {

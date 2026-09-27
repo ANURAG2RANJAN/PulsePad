@@ -1,5 +1,6 @@
 # Build and binary outputs
 *.apk
+!PulsePad_PC_Remote.apk
 *.aab
 build/
 **/build/

@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.antigravity.btremote.hid.HidConstants
 import com.antigravity.btremote.model.RemoteSettings
+import com.antigravity.btremote.model.TargetPlatform
 import com.antigravity.btremote.theme.AmberWarning
 import com.antigravity.btremote.theme.CyanAccent
 import com.antigravity.btremote.theme.EmeraldSuccess
@@ -68,6 +69,7 @@ import com.antigravity.btremote.theme.KeyBorder
 import com.antigravity.btremote.theme.PurpleAccent
 import com.antigravity.btremote.theme.SurfaceBorder
 import com.antigravity.btremote.theme.SurfaceDark
+import com.antigravity.btremote.theme.SurfaceElevated
 import com.antigravity.btremote.theme.TextMuted
 import com.antigravity.btremote.theme.TextPrimary
 import com.antigravity.btremote.theme.TextSecondary
@@ -88,6 +90,9 @@ fun TrackpadScreen(
     onMouseButtonDown: (button: Byte, isDown: Boolean) -> Unit,
     onMouseWheel: (wheelDelta: Int) -> Unit,
     onMultiKey: (modifier: Byte, keys: ByteArray) -> Unit,
+    onConsumerKey: (Short) -> Unit = {},
+    onKeyPress: (Byte, Byte?) -> Unit = { _, _ -> },
+    onKeyCombo: (Byte, Byte) -> Unit = { _, _ -> },
     onHaptic: () -> Unit,
     onMouseSound: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -239,9 +244,18 @@ fun TrackpadScreen(
         ) {
             Icon(Icons.Default.TouchApp, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(14.dp))
             Spacer(modifier = Modifier.width(4.dp))
+            val hintText = if (isAirMouseActive) {
+                "Air Mouse Active — Tilt phone in 3D air to move cursor"
+            } else {
+                when (settings.targetPlatform) {
+                    TargetPlatform.ANDROID -> "Android: 1-Tap Left • Right Click = Back • Mid Click = Home"
+                    TargetPlatform.APPLE -> "Apple: 1-Tap Select • 2-Tap Secondary • AssistiveTouch for pointer"
+                    TargetPlatform.SMART_TV -> "Smart TV: Touchpad moves pointer • Quick Bar buttons control TV"
+                    TargetPlatform.WINDOWS -> "1-Tap: Left • 2-Tap: Right • 3-Swipe: Window Switch / Desktop"
+                }
+            }
             Text(
-                text = if (isAirMouseActive) "Air Mouse Active — Tilt phone in 3D air to move cursor"
-                else "1-Tap: Left • 2-Tap: Right • 3-Swipe: Window Switch / Desktop",
+                text = hintText,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (isAirMouseActive) PurpleAccent else TextSecondary
@@ -505,7 +519,18 @@ fun TrackpadScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Platform-tailored OS Quick Actions Bar
+        OsQuickActionBar(
+            platform = settings.targetPlatform,
+            onConsumerKey = onConsumerKey,
+            onKeyPress = onKeyPress,
+            onKeyCombo = onKeyCombo,
+            onHaptic = onHaptic
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Physical Bottom Mouse Click Buttons
         Row(
@@ -619,5 +644,144 @@ fun TrackpadScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun OsQuickActionBar(
+    platform: TargetPlatform,
+    onConsumerKey: (Short) -> Unit,
+    onKeyPress: (Byte, Byte?) -> Unit,
+    onKeyCombo: (Byte, Byte) -> Unit,
+    onHaptic: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(34.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        when (platform) {
+            TargetPlatform.WINDOWS -> {
+                QuickActionButton("⊞ Start", Modifier.weight(1f)) {
+                    onKeyPress(HidConstants.KEY_NONE, HidConstants.MOD_LGUI)
+                    onHaptic()
+                }
+                QuickActionButton("Desktop", Modifier.weight(1f)) {
+                    onKeyCombo(HidConstants.MOD_LGUI, 0x07.toByte()) // Win+D
+                    onHaptic()
+                }
+                QuickActionButton("Task View", Modifier.weight(1.1f)) {
+                    onKeyCombo(HidConstants.MOD_LGUI, HidConstants.KEY_TAB) // Win+Tab
+                    onHaptic()
+                }
+                QuickActionButton("Action Ctr", Modifier.weight(1.1f)) {
+                    onKeyCombo(HidConstants.MOD_LGUI, 0x04.toByte()) // Win+A
+                    onHaptic()
+                }
+                QuickActionButton("Snip", Modifier.weight(0.9f)) {
+                    onKeyCombo((HidConstants.MOD_LGUI.toInt() or HidConstants.MOD_LSHIFT.toInt()).toByte(), 0x16.toByte()) // Win+Shift+S
+                    onHaptic()
+                }
+            }
+            TargetPlatform.ANDROID -> {
+                QuickActionButton("◀ Back", Modifier.weight(1f), isAccent = true) {
+                    onConsumerKey(HidConstants.CONSUMER_AC_BACK)
+                    onHaptic()
+                }
+                QuickActionButton("⌂ Home", Modifier.weight(1f), isAccent = true) {
+                    onConsumerKey(HidConstants.CONSUMER_AC_HOME)
+                    onHaptic()
+                }
+                QuickActionButton("▢ Recents", Modifier.weight(1.1f)) {
+                    onKeyCombo(HidConstants.MOD_LALT, HidConstants.KEY_TAB)
+                    onHaptic()
+                }
+                QuickActionButton("🔍 Search", Modifier.weight(1f)) {
+                    onConsumerKey(HidConstants.CONSUMER_AC_SEARCH)
+                    onHaptic()
+                }
+                QuickActionButton("⚡ Power", Modifier.weight(0.9f)) {
+                    onConsumerKey(HidConstants.CONSUMER_POWER)
+                    onHaptic()
+                }
+            }
+            TargetPlatform.APPLE -> {
+                QuickActionButton("⌂ Home", Modifier.weight(1f), isAccent = true) {
+                    onConsumerKey(HidConstants.CONSUMER_AC_HOME)
+                    onHaptic()
+                }
+                QuickActionButton("🔍 Spotlight", Modifier.weight(1.2f)) {
+                    onKeyCombo(HidConstants.MOD_LGUI, HidConstants.KEY_SPACE) // ⌘+Space
+                    onHaptic()
+                }
+                QuickActionButton("⇥ Switcher", Modifier.weight(1.1f)) {
+                    onKeyCombo(HidConstants.MOD_LGUI, HidConstants.KEY_TAB) // ⌘+Tab
+                    onHaptic()
+                }
+                QuickActionButton("📸 Screen", Modifier.weight(1f)) {
+                    onKeyCombo((HidConstants.MOD_LGUI.toInt() or HidConstants.MOD_LSHIFT.toInt()).toByte(), 0x20.toByte()) // ⌘+Shift+3
+                    onHaptic()
+                }
+                QuickActionButton("🔒 Lock", Modifier.weight(0.9f)) {
+                    onConsumerKey(HidConstants.CONSUMER_POWER)
+                    onHaptic()
+                }
+            }
+            TargetPlatform.SMART_TV -> {
+                QuickActionButton("◀ Back", Modifier.weight(1f), isAccent = true) {
+                    onConsumerKey(HidConstants.CONSUMER_AC_BACK)
+                    onHaptic()
+                }
+                QuickActionButton("⌂ Home", Modifier.weight(1f), isAccent = true) {
+                    onConsumerKey(HidConstants.CONSUMER_AC_HOME)
+                    onHaptic()
+                }
+                QuickActionButton("☰ Menu", Modifier.weight(1f)) {
+                    onConsumerKey(HidConstants.CONSUMER_MENU)
+                    onHaptic()
+                }
+                QuickActionButton("🔇 Mute", Modifier.weight(0.9f)) {
+                    onConsumerKey(HidConstants.CONSUMER_MUTE)
+                    onHaptic()
+                }
+                QuickActionButton("⚡ Power", Modifier.weight(0.9f)) {
+                    onConsumerKey(HidConstants.CONSUMER_POWER)
+                    onHaptic()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun QuickActionButton(
+    label: String,
+    modifier: Modifier = Modifier,
+    isAccent: Boolean = false,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isAccent) CyanAccent.copy(alpha = 0.18f) else SurfaceElevated)
+            .border(
+                1.dp,
+                if (isAccent) CyanAccent.copy(alpha = 0.5f) else SurfaceBorder,
+                RoundedCornerShape(8.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isAccent) CyanAccent else TextPrimary,
+            maxLines = 1
+        )
     }
 }

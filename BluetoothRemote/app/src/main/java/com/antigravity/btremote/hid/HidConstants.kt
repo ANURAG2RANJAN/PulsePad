@@ -74,6 +74,10 @@ object HidConstants {
     const val KEY_KP_9: Byte = 0x61
     const val KEY_KP_0: Byte = 0x62
     const val KEY_KP_DOT: Byte = 0x63
+    const val KEY_MUTE: Byte = 0x7F
+    const val KEY_VOLUME_UP: Byte = 0x80.toByte()
+    const val KEY_VOLUME_DOWN: Byte = 0x81.toByte()
+    const val KEY_LEFT_GUI: Byte = 0xE3.toByte()
 
     // Consumer usage codes (16-bit)
     const val CONSUMER_PLAY_PAUSE: Short = 0x00CD
@@ -85,6 +89,14 @@ object HidConstants {
     const val CONSUMER_MUTE: Short = 0x00E2
     const val CONSUMER_CALCULATOR: Short = 0x0192
     const val CONSUMER_BROWSER_HOME: Short = 0x0223
+    const val CONSUMER_AC_HOME: Short = 0x0223
+    const val CONSUMER_AC_BACK: Short = 0x0224
+    const val CONSUMER_AC_SEARCH: Short = 0x0221
+    const val CONSUMER_BRIGHTNESS_UP: Short = 0x006F
+    const val CONSUMER_BRIGHTNESS_DOWN: Short = 0x0070
+    const val CONSUMER_VOICE_COMMAND: Short = 0x00CF
+    const val CONSUMER_POWER: Short = 0x0030
+    const val CONSUMER_MENU: Short = 0x0040
 
     val HID_REPORT_DESCRIPTOR = byteArrayOf(
         // Mouse Report (Report ID 1)

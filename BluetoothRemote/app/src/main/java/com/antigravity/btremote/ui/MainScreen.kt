@@ -264,6 +264,13 @@ fun MainScreen(
                             onToggleAlt = { hidManager.stickyAlt = !hidManager.stickyAlt },
                             onToggleShift = { hidManager.stickyShift = !hidManager.stickyShift },
                             onToggleGui = { hidManager.stickyGui = !hidManager.stickyGui },
+                            onKeyDown = { key, mod ->
+                                hidManager.sendKeyDown(key, mod)
+                                triggerKeyPressSound(key == HidConstants.KEY_SPACE || key == HidConstants.KEY_ENTER)
+                            },
+                            onKeyUp = { key ->
+                                hidManager.sendKeyUp(key)
+                            },
                             onKeyPress = { key, mod ->
                                 hidManager.sendKeyPress(key, mod)
                                 triggerKeyPressSound(key == HidConstants.KEY_SPACE || key == HidConstants.KEY_ENTER)

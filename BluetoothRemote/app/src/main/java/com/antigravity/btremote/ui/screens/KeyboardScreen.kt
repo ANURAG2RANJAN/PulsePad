@@ -8,9 +8,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,6 +83,8 @@ fun KeyboardScreen(
     onToggleAlt: () -> Unit,
     onToggleShift: () -> Unit,
     onToggleGui: () -> Unit,
+    onKeyDown: (Byte, Byte?) -> Unit = { k, m -> },
+    onKeyUp: (Byte) -> Unit = { _ -> },
     onKeyPress: (Byte, Byte?) -> Unit,
     onKeyCombo: (Byte, Byte) -> Unit,
     onSendText: (String) -> Unit,
@@ -200,6 +204,8 @@ fun KeyboardScreen(
                 onToggleAlt = onToggleAlt,
                 onToggleShift = onToggleShift,
                 onToggleGui = onToggleGui,
+                onKeyDown = onKeyDown,
+                onKeyUp = onKeyUp,
                 onKeyPress = onKeyPress,
                 onKeyCombo = onKeyCombo,
                 onHaptic = onHaptic,
@@ -220,6 +226,8 @@ fun KeyboardScreen(
                 onToggleAlt = onToggleAlt,
                 onToggleShift = onToggleShift,
                 onToggleGui = onToggleGui,
+                onKeyDown = onKeyDown,
+                onKeyUp = onKeyUp,
                 onKeyPress = onKeyPress,
                 onKeyCombo = onKeyCombo,
                 onHaptic = onHaptic,
@@ -244,6 +252,8 @@ fun LandscapeKeyboardLayout(
     onToggleAlt: () -> Unit,
     onToggleShift: () -> Unit,
     onToggleGui: () -> Unit,
+    onKeyDown: (Byte, Byte?) -> Unit,
+    onKeyUp: (Byte) -> Unit,
     onKeyPress: (Byte, Byte?) -> Unit,
     onKeyCombo: (Byte, Byte) -> Unit,
     onHaptic: () -> Unit,
@@ -263,58 +273,58 @@ fun LandscapeKeyboardLayout(
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(spacing)
         ) {
-            // Row 0: Function Row (Esc, F1 - F12, Del)
+            // Row 0: Function Row (Esc, F1 - F12, PrtSc)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedKeyCap("ESC", { onKeyPress(HidConstants.KEY_ESC, null); onHaptic() }, colorTheme, fontFamily, isAccent = true, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F1", { onKeyPress(HidConstants.KEY_F1, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F2", { onKeyPress(HidConstants.KEY_F2, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F3", { onKeyPress(HidConstants.KEY_F3, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F4", { onKeyPress(HidConstants.KEY_F4, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F5", { onKeyPress(HidConstants.KEY_F5, null); onHaptic() }, colorTheme, fontFamily, isAccent = true, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F6", { onKeyPress(HidConstants.KEY_F6, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F7", { onKeyPress(HidConstants.KEY_F7, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F8", { onKeyPress(HidConstants.KEY_F8, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F9", { onKeyPress(HidConstants.KEY_F9, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F10", { onKeyPress(HidConstants.KEY_F10, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F11", { onKeyPress(HidConstants.KEY_F11, null); onHaptic() }, colorTheme, fontFamily, isAccent = true, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("F12", { onKeyPress(HidConstants.KEY_F12, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("PRTSC", { onKeyPress(HidConstants.KEY_PRINT_SCREEN, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1.2f), height = keyH)
+                ThemedKeyCap("ESC", onKeyDown = { onKeyDown(HidConstants.KEY_ESC, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_ESC) }, colorTheme = colorTheme, fontFamily = fontFamily, isAccent = true, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F1", onKeyDown = { onKeyDown(HidConstants.KEY_F1, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F1) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F2", onKeyDown = { onKeyDown(HidConstants.KEY_F2, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F2) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F3", onKeyDown = { onKeyDown(HidConstants.KEY_F3, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F3) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F4", onKeyDown = { onKeyDown(HidConstants.KEY_F4, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F4) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F5", onKeyDown = { onKeyDown(HidConstants.KEY_F5, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F5) }, colorTheme = colorTheme, fontFamily = fontFamily, isAccent = true, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F6", onKeyDown = { onKeyDown(HidConstants.KEY_F6, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F6) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F7", onKeyDown = { onKeyDown(HidConstants.KEY_F7, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F7) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F8", onKeyDown = { onKeyDown(HidConstants.KEY_F8, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F8) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F9", onKeyDown = { onKeyDown(HidConstants.KEY_F9, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F9) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F10", onKeyDown = { onKeyDown(HidConstants.KEY_F10, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F10) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F11", onKeyDown = { onKeyDown(HidConstants.KEY_F11, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F11) }, colorTheme = colorTheme, fontFamily = fontFamily, isAccent = true, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("F12", onKeyDown = { onKeyDown(HidConstants.KEY_F12, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F12) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("PRTSC", onKeyDown = { onKeyDown(HidConstants.KEY_PRINT_SCREEN, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_PRINT_SCREEN) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1.2f), height = keyH)
             }
 
             // Row 1: `~, 1 - 0, -, =, Backspace
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedKeyCap("`", { onKeyPress(0x35.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(0.9f), height = keyH)
+                ThemedKeyCap("`", onKeyDown = { onKeyDown(0x35.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x35.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(0.9f), height = keyH)
                 val numRow = listOf("1" to 0x1E, "2" to 0x1F, "3" to 0x20, "4" to 0x21, "5" to 0x22, "6" to 0x23, "7" to 0x24, "8" to 0x25, "9" to 0x26, "0" to 0x27)
                 numRow.forEach { (label, code) ->
-                    ThemedKeyCap(label, { onKeyPress(code.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                    ThemedKeyCap(label, onKeyDown = { onKeyDown(code.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(code.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
                 }
-                ThemedKeyCap("-", { onKeyPress(0x2D.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("=", { onKeyPress(0x2E.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("⌫ BKSP", { onKeyPress(HidConstants.KEY_BACKSPACE, null); onHaptic() }, colorTheme, fontFamily, isAccent = true, modifier = Modifier.weight(1.6f), height = keyH)
+                ThemedKeyCap("-", onKeyDown = { onKeyDown(0x2D.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x2D.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("=", onKeyDown = { onKeyDown(0x2E.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x2E.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("⌫ BKSP", onKeyDown = { onKeyDown(HidConstants.KEY_BACKSPACE, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_BACKSPACE) }, colorTheme = colorTheme, fontFamily = fontFamily, isAccent = true, modifier = Modifier.weight(1.6f), height = keyH)
             }
 
             // Row 2: Tab, Q - P, [, ], \
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedKeyCap("TAB", { onKeyPress(HidConstants.KEY_TAB, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1.3f), height = keyH)
+                ThemedKeyCap("TAB", onKeyDown = { onKeyDown(HidConstants.KEY_TAB, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_TAB) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1.3f), height = keyH)
                 val qRow = listOf("Q" to 0x14, "W" to 0x1A, "E" to 0x08, "R" to 0x15, "T" to 0x17, "Y" to 0x1C, "U" to 0x18, "I" to 0x0C, "O" to 0x12, "P" to 0x13)
                 qRow.forEach { (label, code) ->
-                    ThemedKeyCap(label, { onKeyPress(code.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                    ThemedKeyCap(label, onKeyDown = { onKeyDown(code.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(code.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
                 }
-                ThemedKeyCap("[", { onKeyPress(0x2F.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("]", { onKeyPress(0x30.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("\\", { onKeyPress(0x31.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1.1f), height = keyH)
+                ThemedKeyCap("[", onKeyDown = { onKeyDown(0x2F.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x2F.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("]", onKeyDown = { onKeyDown(0x30.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x30.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("\\", onKeyDown = { onKeyDown(0x31.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x31.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1.1f), height = keyH)
             }
 
             // Row 3: Caps, A - L, ;, ', Enter
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedKeyCap("CAPS", { onKeyPress(HidConstants.KEY_CAPS_LOCK, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1.5f), height = keyH)
+                ThemedKeyCap("CAPS", onKeyDown = { onKeyDown(HidConstants.KEY_CAPS_LOCK, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_CAPS_LOCK) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1.5f), height = keyH)
                 val aRow = listOf("A" to 0x04, "S" to 0x16, "D" to 0x07, "F" to 0x09, "G" to 0x0A, "H" to 0x0B, "J" to 0x0D, "K" to 0x0E, "L" to 0x0F)
                 aRow.forEach { (label, code) ->
-                    ThemedKeyCap(label, { onKeyPress(code.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                    ThemedKeyCap(label, onKeyDown = { onKeyDown(code.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(code.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
                 }
-                ThemedKeyCap(";", { onKeyPress(0x33.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("'", { onKeyPress(0x34.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("ENTER", { onKeyPress(HidConstants.KEY_ENTER, null); onHaptic() }, colorTheme, fontFamily, isAccent = true, modifier = Modifier.weight(1.8f), height = keyH)
+                ThemedKeyCap(";", onKeyDown = { onKeyDown(0x33.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x33.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("'", onKeyDown = { onKeyDown(0x34.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x34.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("ENTER", onKeyDown = { onKeyDown(HidConstants.KEY_ENTER, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_ENTER) }, colorTheme = colorTheme, fontFamily = fontFamily, isAccent = true, modifier = Modifier.weight(1.8f), height = keyH)
             }
 
             // Row 4: LShift, Z - M, ,, ., /, RShift
@@ -322,11 +332,11 @@ fun LandscapeKeyboardLayout(
                 ThemedModifierKey("SHIFT", stickyShift, colorTheme, fontFamily, { onToggleShift(); onHaptic() }, modifier = Modifier.weight(1.8f), height = keyH)
                 val zRow = listOf("Z" to 0x1D, "X" to 0x1B, "C" to 0x06, "V" to 0x19, "B" to 0x05, "N" to 0x11, "M" to 0x10)
                 zRow.forEach { (label, code) ->
-                    ThemedKeyCap(label, { onKeyPress(code.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                    ThemedKeyCap(label, onKeyDown = { onKeyDown(code.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(code.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
                 }
-                ThemedKeyCap(",", { onKeyPress(0x36.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap(".", { onKeyPress(0x37.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("/", { onKeyPress(0x38.toByte(), null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap(",", onKeyDown = { onKeyDown(0x36.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x36.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap(".", onKeyDown = { onKeyDown(0x37.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x37.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("/", onKeyDown = { onKeyDown(0x38.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(0x38.toByte()) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
                 ThemedModifierKey("SHIFT", stickyShift, colorTheme, fontFamily, { onToggleShift(); onHaptic() }, modifier = Modifier.weight(2f), height = keyH)
             }
 
@@ -337,14 +347,35 @@ fun LandscapeKeyboardLayout(
                 ThemedModifierKey("ALT", stickyAlt, colorTheme, fontFamily, { onToggleAlt(); onHaptic() }, modifier = Modifier.weight(1.1f), height = keyH)
 
                 // Spacebar
+                var isSpacePressed by remember { mutableStateOf(false) }
+                val spaceScale by animateFloatAsState(
+                    targetValue = if (isSpacePressed) 0.94f else 1.0f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+                    label = "spaceScale"
+                )
                 Box(
                     modifier = Modifier
                         .weight(5f)
                         .height(keyH)
+                        .scale(spaceScale)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(colorTheme.keyBg)
-                        .border(1.dp, colorTheme.keyBorder, RoundedCornerShape(6.dp))
-                        .clickable { onKeyPress(HidConstants.KEY_SPACE, null); onHaptic() },
+                        .background(if (isSpacePressed) colorTheme.accentColor.copy(alpha = 0.4f) else colorTheme.keyBg)
+                        .border(1.dp, if (isSpacePressed) colorTheme.accentColor else colorTheme.keyBorder, RoundedCornerShape(6.dp))
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onPress = {
+                                    isSpacePressed = true
+                                    onKeyDown(HidConstants.KEY_SPACE, null)
+                                    onHaptic()
+                                    try {
+                                        tryAwaitRelease()
+                                    } finally {
+                                        isSpacePressed = false
+                                        onKeyUp(HidConstants.KEY_SPACE)
+                                    }
+                                }
+                            )
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Text("SPACE", color = colorTheme.keyTextColor.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontFamily = fontFamily)
@@ -365,39 +396,39 @@ fun LandscapeKeyboardLayout(
         ) {
             // Row 0: Ins, Home, PgUp
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedKeyCap("INS", { onKeyPress(HidConstants.KEY_INSERT, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("HOME", { onKeyPress(HidConstants.KEY_HOME, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("PGUP", { onKeyPress(HidConstants.KEY_PAGE_UP, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("INS", onKeyDown = { onKeyDown(HidConstants.KEY_INSERT, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_INSERT) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("HOME", onKeyDown = { onKeyDown(HidConstants.KEY_HOME, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_HOME) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("PGUP", onKeyDown = { onKeyDown(HidConstants.KEY_PAGE_UP, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_PAGE_UP) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
             }
 
             // Row 1: Del, End, PgDn
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedKeyCap("DEL", { onKeyPress(HidConstants.KEY_DELETE, null); onHaptic() }, colorTheme, fontFamily, isAccent = true, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("END", { onKeyPress(HidConstants.KEY_END, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("PGDN", { onKeyPress(HidConstants.KEY_PAGE_DOWN, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("DEL", onKeyDown = { onKeyDown(HidConstants.KEY_DELETE, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_DELETE) }, colorTheme = colorTheme, fontFamily = fontFamily, isAccent = true, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("END", onKeyDown = { onKeyDown(HidConstants.KEY_END, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_END) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("PGDN", onKeyDown = { onKeyDown(HidConstants.KEY_PAGE_DOWN, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_PAGE_DOWN) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
             }
 
             // Row 2 & 3: Quick Productivity Shortcuts in Landscape
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedKeyCap("COPY", { onKeyCombo(HidConstants.MOD_LCTRL, 0x06.toByte()); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("PASTE", { onKeyCombo(HidConstants.MOD_LCTRL, 0x19.toByte()); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedShortcutPill("Copy (Ctrl+C)", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x06.toByte()); onHaptic() }
+                ThemedShortcutPill("Paste (Ctrl+V)", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LCTRL, 0x19.toByte()); onHaptic() }
             }
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedKeyCap("A+TAB", { onKeyCombo(HidConstants.MOD_LALT, HidConstants.KEY_TAB); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("W+D", { onKeyCombo(HidConstants.MOD_LGUI, 0x07.toByte()); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedShortcutPill("Alt+Tab", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LALT, HidConstants.KEY_TAB); onHaptic() }
+                ThemedShortcutPill("Win+D", colorTheme, fontFamily) { onKeyCombo(HidConstants.MOD_LGUI, 0x07.toByte()); onHaptic() }
             }
 
             // Row 4: Arrow UP (centered)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                ThemedKeyCap("▲", { onKeyPress(HidConstants.KEY_UP, null); onHaptic() }, colorTheme, fontFamily, width = 42.dp, height = keyH)
+                ThemedKeyCap("▲", onKeyDown = { onKeyDown(HidConstants.KEY_UP, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_UP) }, colorTheme = colorTheme, fontFamily = fontFamily, width = 42.dp, height = keyH)
             }
 
             // Row 5: Arrow LEFT, DOWN, RIGHT
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing)) {
-                ThemedKeyCap("◀", { onKeyPress(HidConstants.KEY_LEFT, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("▼", { onKeyPress(HidConstants.KEY_DOWN, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
-                ThemedKeyCap("▶", { onKeyPress(HidConstants.KEY_RIGHT, null); onHaptic() }, colorTheme, fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("◀", onKeyDown = { onKeyDown(HidConstants.KEY_LEFT, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_LEFT) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("▼", onKeyDown = { onKeyDown(HidConstants.KEY_DOWN, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_DOWN) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
+                ThemedKeyCap("▶", onKeyDown = { onKeyDown(HidConstants.KEY_RIGHT, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_RIGHT) }, colorTheme = colorTheme, fontFamily = fontFamily, modifier = Modifier.weight(1f), height = keyH)
             }
         }
     }
@@ -421,17 +452,16 @@ fun PortraitKeyboardLayout(
     onToggleAlt: () -> Unit,
     onToggleShift: () -> Unit,
     onToggleGui: () -> Unit,
+    onKeyDown: (Byte, Byte?) -> Unit,
+    onKeyUp: (Byte) -> Unit,
     onKeyPress: (Byte, Byte?) -> Unit,
     onKeyCombo: (Byte, Byte) -> Unit,
     onHaptic: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val verticalScroll = rememberScrollState()
-
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(verticalScroll)
     ) {
         // Fast Text Transmitter Box
         Row(
@@ -530,21 +560,21 @@ fun PortraitKeyboardLayout(
                 .horizontalScroll(functionScroll),
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            ThemedKeyCap("ESC", { onKeyPress(HidConstants.KEY_ESC, null); onHaptic() }, colorTheme, fontOption.fontFamily, width = 46.dp, isAccent = true)
-            ThemedKeyCap("F1", { onKeyPress(HidConstants.KEY_F1, null); onHaptic() }, colorTheme, fontOption.fontFamily)
-            ThemedKeyCap("F2", { onKeyPress(HidConstants.KEY_F2, null); onHaptic() }, colorTheme, fontOption.fontFamily)
-            ThemedKeyCap("F3", { onKeyPress(HidConstants.KEY_F3, null); onHaptic() }, colorTheme, fontOption.fontFamily)
-            ThemedKeyCap("F4", { onKeyPress(HidConstants.KEY_F4, null); onHaptic() }, colorTheme, fontOption.fontFamily)
-            ThemedKeyCap("F5", { onKeyPress(HidConstants.KEY_F5, null); onHaptic() }, colorTheme, fontOption.fontFamily, isAccent = true)
-            ThemedKeyCap("F6", { onKeyPress(HidConstants.KEY_F6, null); onHaptic() }, colorTheme, fontOption.fontFamily)
-            ThemedKeyCap("F7", { onKeyPress(HidConstants.KEY_F7, null); onHaptic() }, colorTheme, fontOption.fontFamily)
-            ThemedKeyCap("F8", { onKeyPress(HidConstants.KEY_F8, null); onHaptic() }, colorTheme, fontOption.fontFamily)
-            ThemedKeyCap("F9", { onKeyPress(HidConstants.KEY_F9, null); onHaptic() }, colorTheme, fontOption.fontFamily)
-            ThemedKeyCap("F10", { onKeyPress(HidConstants.KEY_F10, null); onHaptic() }, colorTheme, fontOption.fontFamily)
-            ThemedKeyCap("F11", { onKeyPress(HidConstants.KEY_F11, null); onHaptic() }, colorTheme, fontOption.fontFamily, isAccent = true)
-            ThemedKeyCap("F12", { onKeyPress(HidConstants.KEY_F12, null); onHaptic() }, colorTheme, fontOption.fontFamily)
-            ThemedKeyCap("DEL", { onKeyPress(HidConstants.KEY_DELETE, null); onHaptic() }, colorTheme, fontOption.fontFamily, width = 46.dp)
-            ThemedKeyCap("PRTSC", { onKeyPress(HidConstants.KEY_PRINT_SCREEN, null); onHaptic() }, colorTheme, fontOption.fontFamily, width = 54.dp)
+            ThemedKeyCap("ESC", onKeyDown = { onKeyDown(HidConstants.KEY_ESC, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_ESC) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, width = 46.dp, isAccent = true)
+            ThemedKeyCap("F1", onKeyDown = { onKeyDown(HidConstants.KEY_F1, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F1) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily)
+            ThemedKeyCap("F2", onKeyDown = { onKeyDown(HidConstants.KEY_F2, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F2) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily)
+            ThemedKeyCap("F3", onKeyDown = { onKeyDown(HidConstants.KEY_F3, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F3) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily)
+            ThemedKeyCap("F4", onKeyDown = { onKeyDown(HidConstants.KEY_F4, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F4) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily)
+            ThemedKeyCap("F5", onKeyDown = { onKeyDown(HidConstants.KEY_F5, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F5) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, isAccent = true)
+            ThemedKeyCap("F6", onKeyDown = { onKeyDown(HidConstants.KEY_F6, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F6) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily)
+            ThemedKeyCap("F7", onKeyDown = { onKeyDown(HidConstants.KEY_F7, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F7) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily)
+            ThemedKeyCap("F8", onKeyDown = { onKeyDown(HidConstants.KEY_F8, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F8) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily)
+            ThemedKeyCap("F9", onKeyDown = { onKeyDown(HidConstants.KEY_F9, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F9) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily)
+            ThemedKeyCap("F10", onKeyDown = { onKeyDown(HidConstants.KEY_F10, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F10) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily)
+            ThemedKeyCap("F11", onKeyDown = { onKeyDown(HidConstants.KEY_F11, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F11) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, isAccent = true)
+            ThemedKeyCap("F12", onKeyDown = { onKeyDown(HidConstants.KEY_F12, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_F12) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily)
+            ThemedKeyCap("DEL", onKeyDown = { onKeyDown(HidConstants.KEY_DELETE, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_DELETE) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, width = 46.dp)
+            ThemedKeyCap("PRTSC", onKeyDown = { onKeyDown(HidConstants.KEY_PRINT_SCREEN, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_PRINT_SCREEN) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, width = 54.dp)
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -554,19 +584,19 @@ fun PortraitKeyboardLayout(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             val numKeys = listOf("1" to 0x1E, "2" to 0x1F, "3" to 0x20, "4" to 0x21, "5" to 0x22, "6" to 0x23, "7" to 0x24, "8" to 0x25, "9" to 0x26, "0" to 0x27)
             numKeys.forEach { (label, code) ->
-                ThemedKeyCap(label, { onKeyPress(code.toByte(), null); onHaptic() }, colorTheme, fontOption.fontFamily, modifier = Modifier.weight(1f))
+                ThemedKeyCap(label, onKeyDown = { onKeyDown(code.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(code.toByte()) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, modifier = Modifier.weight(1f))
             }
-            ThemedKeyCap("⌫", { onKeyPress(HidConstants.KEY_BACKSPACE, null); onHaptic() }, colorTheme, fontOption.fontFamily, modifier = Modifier.weight(1.3f))
+            ThemedKeyCap("⌫", onKeyDown = { onKeyDown(HidConstants.KEY_BACKSPACE, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_BACKSPACE) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, modifier = Modifier.weight(1.3f))
         }
 
         Spacer(modifier = Modifier.height(6.dp))
 
         // Row 2: Tab + QWERTYUIOP
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            ThemedKeyCap("TAB", { onKeyPress(HidConstants.KEY_TAB, null); onHaptic() }, colorTheme, fontOption.fontFamily, modifier = Modifier.weight(1.2f))
+            ThemedKeyCap("TAB", onKeyDown = { onKeyDown(HidConstants.KEY_TAB, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_TAB) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, modifier = Modifier.weight(1.2f))
             val qRow = listOf("Q" to 0x14, "W" to 0x1A, "E" to 0x08, "R" to 0x15, "T" to 0x17, "Y" to 0x1C, "U" to 0x18, "I" to 0x0C, "O" to 0x12, "P" to 0x13)
             qRow.forEach { (label, code) ->
-                ThemedKeyCap(label, { onKeyPress(code.toByte(), null); onHaptic() }, colorTheme, fontOption.fontFamily, modifier = Modifier.weight(1f))
+                ThemedKeyCap(label, onKeyDown = { onKeyDown(code.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(code.toByte()) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, modifier = Modifier.weight(1f))
             }
         }
 
@@ -576,9 +606,9 @@ fun PortraitKeyboardLayout(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             val aRow = listOf("A" to 0x04, "S" to 0x16, "D" to 0x07, "F" to 0x09, "G" to 0x0A, "H" to 0x0B, "J" to 0x0D, "K" to 0x0E, "L" to 0x0F)
             aRow.forEach { (label, code) ->
-                ThemedKeyCap(label, { onKeyPress(code.toByte(), null); onHaptic() }, colorTheme, fontOption.fontFamily, modifier = Modifier.weight(1f))
+                ThemedKeyCap(label, onKeyDown = { onKeyDown(code.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(code.toByte()) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, modifier = Modifier.weight(1f))
             }
-            ThemedKeyCap("ENTER", { onKeyPress(HidConstants.KEY_ENTER, null); onHaptic() }, colorTheme, fontOption.fontFamily, modifier = Modifier.weight(1.6f), isAccent = true)
+            ThemedKeyCap("ENTER", onKeyDown = { onKeyDown(HidConstants.KEY_ENTER, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_ENTER) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, modifier = Modifier.weight(1.6f), isAccent = true)
         }
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -587,7 +617,7 @@ fun PortraitKeyboardLayout(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             val zRow = listOf("Z" to 0x1D, "X" to 0x1B, "C" to 0x06, "V" to 0x19, "B" to 0x05, "N" to 0x11, "M" to 0x10, "," to 0x36, "." to 0x37, "/" to 0x38)
             zRow.forEach { (label, code) ->
-                ThemedKeyCap(label, { onKeyPress(code.toByte(), null); onHaptic() }, colorTheme, fontOption.fontFamily, modifier = Modifier.weight(1f))
+                ThemedKeyCap(label, onKeyDown = { onKeyDown(code.toByte(), null); onHaptic() }, onKeyUp = { onKeyUp(code.toByte()) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, modifier = Modifier.weight(1f))
             }
         }
 
@@ -600,14 +630,35 @@ fun PortraitKeyboardLayout(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Spacebar
+            var isSpacePressed by remember { mutableStateOf(false) }
+            val spaceScale by animateFloatAsState(
+                targetValue = if (isSpacePressed) 0.94f else 1.0f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+                label = "portraitSpaceScale"
+            )
             Box(
                 modifier = Modifier
                     .weight(1.8f)
                     .height(44.dp)
+                    .scale(spaceScale)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(colorTheme.keyBg)
-                    .border(1.dp, colorTheme.keyBorder, RoundedCornerShape(8.dp))
-                    .clickable { onKeyPress(HidConstants.KEY_SPACE, null); onHaptic() },
+                    .background(if (isSpacePressed) colorTheme.accentColor.copy(alpha = 0.4f) else colorTheme.keyBg)
+                    .border(1.dp, if (isSpacePressed) colorTheme.accentColor else colorTheme.keyBorder, RoundedCornerShape(8.dp))
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                isSpacePressed = true
+                                onKeyDown(HidConstants.KEY_SPACE, null)
+                                onHaptic()
+                                try {
+                                    tryAwaitRelease()
+                                } finally {
+                                    isSpacePressed = false
+                                    onKeyUp(HidConstants.KEY_SPACE)
+                                }
+                            }
+                        )
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Text("SPACE", color = colorTheme.keyTextColor.copy(alpha = 0.7f), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, fontFamily = fontOption.fontFamily)
@@ -618,13 +669,13 @@ fun PortraitKeyboardLayout(
                 modifier = Modifier.weight(1.2f),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                ThemedKeyCap("◀", { onKeyPress(HidConstants.KEY_LEFT, null); onHaptic() }, colorTheme, fontOption.fontFamily, modifier = Modifier.weight(1f), height = 44.dp)
+                ThemedKeyCap("◀", onKeyDown = { onKeyDown(HidConstants.KEY_LEFT, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_LEFT) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, modifier = Modifier.weight(1f), height = 44.dp)
                 Column(modifier = Modifier.weight(1f)) {
-                    ThemedKeyCap("▲", { onKeyPress(HidConstants.KEY_UP, null); onHaptic() }, colorTheme, fontOption.fontFamily, height = 20.dp)
+                    ThemedKeyCap("▲", onKeyDown = { onKeyDown(HidConstants.KEY_UP, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_UP) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, height = 20.dp)
                     Spacer(modifier = Modifier.height(4.dp))
-                    ThemedKeyCap("▼", { onKeyPress(HidConstants.KEY_DOWN, null); onHaptic() }, colorTheme, fontOption.fontFamily, height = 20.dp)
+                    ThemedKeyCap("▼", onKeyDown = { onKeyDown(HidConstants.KEY_DOWN, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_DOWN) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, height = 20.dp)
                 }
-                ThemedKeyCap("▶", { onKeyPress(HidConstants.KEY_RIGHT, null); onHaptic() }, colorTheme, fontOption.fontFamily, modifier = Modifier.weight(1f), height = 44.dp)
+                ThemedKeyCap("▶", onKeyDown = { onKeyDown(HidConstants.KEY_RIGHT, null); onHaptic() }, onKeyUp = { onKeyUp(HidConstants.KEY_RIGHT) }, colorTheme = colorTheme, fontFamily = fontOption.fontFamily, modifier = Modifier.weight(1f), height = 44.dp)
             }
         }
     }
@@ -762,8 +813,7 @@ fun ThemedModifierKey(
     modifier: Modifier = Modifier,
     height: androidx.compose.ui.unit.Dp = 40.dp
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    var isPressed by remember { mutableStateOf(false) }
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1.0f,
@@ -788,10 +838,19 @@ fun ThemedModifierKey(
                 if (isActive || isPressed) colorTheme.accentColor else colorTheme.keyBorder,
                 RoundedCornerShape(6.dp)
             )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) { onClick() },
+            .pointerInput(title) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        onClick()
+                        try {
+                            tryAwaitRelease()
+                        } finally {
+                            isPressed = false
+                        }
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -811,8 +870,7 @@ fun ThemedShortcutPill(
     fontFamily: FontFamily,
     onClick: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    var isPressed by remember { mutableStateOf(false) }
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.93f else 1.0f,
@@ -830,10 +888,19 @@ fun ThemedShortcutPill(
                 if (isPressed) colorTheme.accentColor else colorTheme.keyBorder,
                 RoundedCornerShape(8.dp)
             )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) { onClick() }
+            .pointerInput(label) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        onClick()
+                        try {
+                            tryAwaitRelease()
+                        } finally {
+                            isPressed = false
+                        }
+                    }
+                )
+            }
             .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = colorTheme.accentColor, fontFamily = fontFamily)
@@ -843,7 +910,8 @@ fun ThemedShortcutPill(
 @Composable
 fun ThemedKeyCap(
     text: String,
-    onClick: () -> Unit,
+    onKeyDown: () -> Unit,
+    onKeyUp: () -> Unit,
     colorTheme: KeyboardColorTheme,
     fontFamily: FontFamily,
     modifier: Modifier = Modifier,
@@ -851,11 +919,10 @@ fun ThemedKeyCap(
     height: androidx.compose.ui.unit.Dp = 42.dp,
     isAccent: Boolean = false
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    var isPressed by remember { mutableStateOf(false) }
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1.0f,
+        targetValue = if (isPressed) 0.90f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessHigh
@@ -863,7 +930,7 @@ fun ThemedKeyCap(
         label = "keyScale"
     )
     val offsetY by animateDpAsState(
-        targetValue = if (isPressed) 3.5.dp else 0.dp,
+        targetValue = if (isPressed) 3.dp else 0.dp,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessHigh
@@ -890,10 +957,20 @@ fun ThemedKeyCap(
                 else colorTheme.keyBorder,
                 RoundedCornerShape(6.dp)
             )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null
-            ) { onClick() },
+            .pointerInput(text) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        onKeyDown()
+                        try {
+                            tryAwaitRelease()
+                        } finally {
+                            isPressed = false
+                            onKeyUp()
+                        }
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -904,4 +981,28 @@ fun ThemedKeyCap(
             color = if (isPressed) colorTheme.activeKeyText else if (isAccent) colorTheme.accentColor else colorTheme.keyTextColor
         )
     }
+}
+
+@Composable
+fun ThemedKeyCap(
+    text: String,
+    onClick: () -> Unit,
+    colorTheme: KeyboardColorTheme,
+    fontFamily: FontFamily,
+    modifier: Modifier = Modifier,
+    width: androidx.compose.ui.unit.Dp? = null,
+    height: androidx.compose.ui.unit.Dp = 42.dp,
+    isAccent: Boolean = false
+) {
+    ThemedKeyCap(
+        text = text,
+        onKeyDown = onClick,
+        onKeyUp = {},
+        colorTheme = colorTheme,
+        fontFamily = fontFamily,
+        modifier = modifier,
+        width = width,
+        height = height,
+        isAccent = isAccent
+    )
 }

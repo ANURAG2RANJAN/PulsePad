@@ -62,6 +62,9 @@ class BluetoothHidManager(private val context: Context) {
     // Mouse button state (for drag & drop)
     var currentMouseButtonMask: Byte = 0x00
 
+    // Set of currently pressed keys (for true 6-Key Rollover)
+    val activeKeys: MutableSet<Byte> = java.util.Collections.synchronizedSet(mutableSetOf<Byte>())
+
     private fun recordTelemetry() {
         _telemetryPacketsSent.value++
         packetWindowCount++
@@ -90,6 +93,8 @@ class BluetoothHidManager(private val context: Context) {
                 Log.d(TAG, "HID_DEVICE profile proxy disconnected")
                 hidDevice = null
                 isAppRegistered = false
+                activeKeys.clear()
+                currentMouseButtonMask = 0x00
                 _status.value = ConnectionStatus.Disconnected
             }
         }
@@ -129,6 +134,8 @@ class BluetoothHidManager(private val context: Context) {
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     currentDevice = null
+                    activeKeys.clear()
+                    currentMouseButtonMask = 0x00
                     _status.value = ConnectionStatus.Disconnected
                     refreshPairedDevices()
                 }
@@ -136,10 +143,33 @@ class BluetoothHidManager(private val context: Context) {
         }
 
         override fun onGetReport(device: BluetoothDevice?, type: Byte, id: Byte, bufferSize: Int) {
-            if (id == HidConstants.REPORT_ID_KEYBOARD.toByte()) {
-                hidDevice?.replyReport(device, type, id, ByteArray(8))
-            } else if (id == HidConstants.REPORT_ID_MOUSE.toByte()) {
-                hidDevice?.replyReport(device, type, id, ByteArray(4))
+            Log.d(TAG, "onGetReport: id=$id, type=$type")
+            when (id.toInt()) {
+                HidConstants.REPORT_ID_KEYBOARD -> {
+                    val report = ByteArray(8)
+                    report[0] = getEffectiveModifiers()
+                    synchronized(activeKeys) {
+                        activeKeys.take(6).forEachIndexed { i, k ->
+                            report[2 + i] = k
+                        }
+                    }
+                    hidDevice?.replyReport(device, type, id, report)
+                }
+                HidConstants.REPORT_ID_MOUSE -> {
+                    val report = byteArrayOf(currentMouseButtonMask, 0, 0, 0)
+                    hidDevice?.replyReport(device, type, id, report)
+                }
+                HidConstants.REPORT_ID_CONSUMER -> {
+                    hidDevice?.replyReport(device, type, id, ByteArray(2))
+                }
+                0 -> {
+                    val report = ByteArray(8)
+                    report[0] = getEffectiveModifiers()
+                    hidDevice?.replyReport(device, type, HidConstants.REPORT_ID_KEYBOARD.toByte(), report)
+                }
+                else -> {
+                    hidDevice?.reportError(device, BluetoothHidDevice.ERROR_RSP_INVALID_RPT_ID)
+                }
             }
         }
 
@@ -178,22 +208,15 @@ class BluetoothHidManager(private val context: Context) {
         val hid = hidDevice ?: return
         try {
             val sdp = BluetoothHidDeviceAppSdpSettings(
-                "BT PC Remote",
-                "Android Bluetooth PC Keyboard & Mouse Remote",
-                "Antigravity",
+                "PulsePad PC Remote",
+                "Bluetooth PC Keyboard & Mouse Remote",
+                "PulsePad",
                 BluetoothHidDevice.SUBCLASS1_COMBO,
                 HidConstants.HID_REPORT_DESCRIPTOR
             )
-            val qos = BluetoothHidDeviceAppQosSettings(
-                BluetoothHidDeviceAppQosSettings.SERVICE_BEST_EFFORT,
-                800,
-                9,
-                0,
-                11250,
-                BluetoothHidDeviceAppQosSettings.MAX
-            )
-            hid.registerApp(sdp, qos, null, executor, hidCallback)
-            Log.d(TAG, "registerApp called successfully")
+            // Use null for inQos and outQos to let Android Bluetooth stack negotiate optimal standard QoS
+            hid.registerApp(sdp, null, null, executor, hidCallback)
+            Log.d(TAG, "registerApp called successfully with standard Bluetooth HID QoS")
         } catch (e: SecurityException) {
             _status.value = ConnectionStatus.PermissionMissing
         } catch (e: Exception) {
@@ -270,15 +293,19 @@ class BluetoothHidManager(private val context: Context) {
         val hid = hidDevice ?: return
         val dev = currentDevice ?: return
 
-        // Button down
-        val reportDown = byteArrayOf(buttonMask, 0, 0, 0)
-        hid.sendReport(dev, HidConstants.REPORT_ID_MOUSE, reportDown)
-        recordTelemetry()
+        scope.launch {
+            // Button down
+            val reportDown = byteArrayOf(buttonMask, 0, 0, 0)
+            hid.sendReport(dev, HidConstants.REPORT_ID_MOUSE, reportDown)
+            recordTelemetry()
 
-        // Button up
-        val reportUp = byteArrayOf(0, 0, 0, 0)
-        hid.sendReport(dev, HidConstants.REPORT_ID_MOUSE, reportUp)
-        recordTelemetry()
+            delay(25) // Hold click for 25ms for clean PC debounce
+
+            // Button up
+            val reportUp = byteArrayOf(0, 0, 0, 0)
+            hid.sendReport(dev, HidConstants.REPORT_ID_MOUSE, reportUp)
+            recordTelemetry()
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -314,19 +341,71 @@ class BluetoothHidManager(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
+    fun sendKeyboardReport() {
+        val hid = hidDevice ?: return
+        val dev = currentDevice ?: return
+        val report = ByteArray(8)
+        report[0] = getEffectiveModifiers()
+        report[1] = 0 // reserved
+        synchronized(activeKeys) {
+            activeKeys.take(6).forEachIndexed { i, k ->
+                report[2 + i] = k
+            }
+        }
+        hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, report)
+        recordTelemetry()
+    }
+
+    private val keyPressTimestamps = java.util.concurrent.ConcurrentHashMap<Byte, Long>()
+
+    fun sendKeyDown(key: Byte, customModifier: Byte? = null) {
+        if (key == HidConstants.KEY_NONE) return
+        keyPressTimestamps[key] = System.currentTimeMillis()
+        synchronized(activeKeys) {
+            activeKeys.add(key)
+        }
+        sendKeyboardReport()
+    }
+
+    fun sendKeyUp(key: Byte) {
+        scope.launch {
+            val pressedTime = keyPressTimestamps.remove(key) ?: 0L
+            val elapsed = System.currentTimeMillis() - pressedTime
+            if (elapsed < 28) {
+                delay(28 - elapsed)
+            }
+            synchronized(activeKeys) {
+                activeKeys.remove(key)
+            }
+            sendKeyboardReport()
+        }
+    }
+
+    fun releaseAllKeys() {
+        synchronized(activeKeys) {
+            activeKeys.clear()
+        }
+        sendKeyboardReport()
+    }
+
+    @SuppressLint("MissingPermission")
     fun sendKeyPress(key: Byte, customModifier: Byte? = null) {
         val hid = hidDevice ?: return
         val dev = currentDevice ?: return
 
-        val mod = customModifier ?: getEffectiveModifiers()
-        val reportDown = byteArrayOf(mod, 0, key, 0, 0, 0, 0, 0)
-        hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportDown)
-        recordTelemetry()
+        scope.launch {
+            val mod = customModifier ?: getEffectiveModifiers()
+            val reportDown = byteArrayOf(mod, 0, key, 0, 0, 0, 0, 0)
+            hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportDown)
+            recordTelemetry()
 
-        // Release key (and clear sticky modifiers if they were one-shot)
-        val reportUp = byteArrayOf(if (customModifier != null) 0 else getEffectiveModifiers(), 0, 0, 0, 0, 0, 0, 0)
-        hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportUp)
-        recordTelemetry()
+            // Essential 30ms hold duration so PC debouncing registers the keystroke
+            delay(30)
+
+            val reportUp = byteArrayOf(if (customModifier != null) 0 else getEffectiveModifiers(), 0, 0, 0, 0, 0, 0, 0)
+            hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportUp)
+            recordTelemetry()
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -334,13 +413,17 @@ class BluetoothHidManager(private val context: Context) {
         val hid = hidDevice ?: return
         val dev = currentDevice ?: return
 
-        val reportDown = byteArrayOf(modifier, 0, key, 0, 0, 0, 0, 0)
-        hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportDown)
-        recordTelemetry()
+        scope.launch {
+            val reportDown = byteArrayOf(modifier, 0, key, 0, 0, 0, 0, 0)
+            hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportDown)
+            recordTelemetry()
 
-        val reportUp = byteArrayOf(0, 0, 0, 0, 0, 0, 0, 0)
-        hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportUp)
-        recordTelemetry()
+            delay(35) // Hold combo for 35ms
+
+            val reportUp = byteArrayOf(0, 0, 0, 0, 0, 0, 0, 0)
+            hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportUp)
+            recordTelemetry()
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -348,17 +431,21 @@ class BluetoothHidManager(private val context: Context) {
         val hid = hidDevice ?: return
         val dev = currentDevice ?: return
 
-        val reportDown = ByteArray(8)
-        reportDown[0] = modifier
-        keys.take(6).forEachIndexed { i, k ->
-            reportDown[2 + i] = k
-        }
-        hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportDown)
-        recordTelemetry()
+        scope.launch {
+            val reportDown = ByteArray(8)
+            reportDown[0] = modifier
+            keys.take(6).forEachIndexed { i, k ->
+                reportDown[2 + i] = k
+            }
+            hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportDown)
+            recordTelemetry()
 
-        val reportUp = ByteArray(8)
-        hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportUp)
-        recordTelemetry()
+            delay(40) // Hold multi-key combo for 40ms
+
+            val reportUp = ByteArray(8)
+            hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportUp)
+            recordTelemetry()
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -372,10 +459,10 @@ class BluetoothHidManager(private val context: Context) {
                 if (mapping != null) {
                     val reportDown = byteArrayOf(mapping.first, 0, mapping.second, 0, 0, 0, 0, 0)
                     hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportDown)
-                    delay(8)
+                    delay(20)
                     val reportUp = byteArrayOf(0, 0, 0, 0, 0, 0, 0, 0)
                     hid.sendReport(dev, HidConstants.REPORT_ID_KEYBOARD, reportUp)
-                    delay(8)
+                    delay(20)
                 }
                 onProgress?.invoke(index + 1, text.length)
             }
@@ -389,14 +476,18 @@ class BluetoothHidManager(private val context: Context) {
         val hid = hidDevice ?: return
         val dev = currentDevice ?: return
 
-        val lsb = (code.toInt() and 0xFF).toByte()
-        val msb = ((code.toInt() shr 8) and 0xFF).toByte()
+        scope.launch {
+            val lsb = (code.toInt() and 0xFF).toByte()
+            val msb = ((code.toInt() shr 8) and 0xFF).toByte()
 
-        val reportDown = byteArrayOf(lsb, msb)
-        hid.sendReport(dev, HidConstants.REPORT_ID_CONSUMER, reportDown)
+            val reportDown = byteArrayOf(lsb, msb)
+            hid.sendReport(dev, HidConstants.REPORT_ID_CONSUMER, reportDown)
 
-        val reportUp = byteArrayOf(0, 0)
-        hid.sendReport(dev, HidConstants.REPORT_ID_CONSUMER, reportUp)
+            delay(35)
+
+            val reportUp = byteArrayOf(0, 0)
+            hid.sendReport(dev, HidConstants.REPORT_ID_CONSUMER, reportUp)
+        }
     }
 
     @SuppressLint("MissingPermission")

@@ -1,0 +1,36 @@
+# Build and binary outputs
+*.apk
+*.aab
+build/
+**/build/
+.gradle/
+**/.gradle/
+
+# Android Studio / IntelliJ / VS Code
+.idea/
+**/.idea/
+*.iml
+**/*.iml
+local.properties
+captures/
+.externalNativeBuild
+.cxx
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+env/
+venv/
+
+# Diagnostics & Logs
+*.log
+auth_out.txt
+push_to_github.bat
+
+# OS generated
+.DS_Store
+Thumbs.db

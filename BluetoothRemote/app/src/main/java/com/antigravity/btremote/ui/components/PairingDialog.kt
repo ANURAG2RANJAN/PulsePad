@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,6 +54,7 @@ import com.antigravity.btremote.theme.TextSecondary
 @Composable
 fun PairingDialog(
     pairedDevices: List<PairedDeviceItem>,
+    phoneName: String = "This Phone",
     onDeviceSelected: (String) -> Unit,
     onMakeDiscoverable: () -> Unit,
     onOpenBtSettings: () -> Unit,
@@ -165,7 +167,7 @@ fun PairingDialog(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height((pairedDevices.size * 64).coerceIn(64, 180).dp)
+                            .heightIn(max = 240.dp)
                     ) {
                         items(pairedDevices) { device ->
                             Row(
@@ -281,9 +283,16 @@ fun PairingDialog(
                 ) {
                     Column {
                         Text("💡 Quick Pairing Guide:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CyanAccent)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Phone BT Name: $phoneName",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            "1. Tap 'Make Discoverable'.\n2. On your PC, open Bluetooth Settings -> 'Add Device'.\n3. Select your phone. It pairs directly as a wireless Keyboard & Mouse!",
+                            "1. Tap 'Make Discoverable' below.\n2. On your PC: Settings -> Bluetooth -> 'Add Device'.\n3. Select '$phoneName'. It pairs directly as your PC's wireless Keyboard & Mouse!",
                             fontSize = 11.sp,
                             color = TextSecondary,
                             lineHeight = 15.sp

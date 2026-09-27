@@ -104,7 +104,7 @@ object HidConstants {
         0x81.toByte(), 0x02.toByte(), //     INPUT (Data,Var,Abs)
         0x95.toByte(), 0x01.toByte(), //     REPORT_COUNT (1)
         0x75.toByte(), 0x03.toByte(), //     REPORT_SIZE (3)
-        0x81.toByte(), 0x01.toByte(), //     INPUT (Cnst,Ary,Abs) -- 3-bit padding
+        0x81.toByte(), 0x03.toByte(), //     INPUT (Cnst,Var,Abs) -- 3-bit padding
         0x05.toByte(), 0x01.toByte(), //     USAGE_PAGE (Generic Desktop)
         0x09.toByte(), 0x30.toByte(), //     USAGE (X)
         0x09.toByte(), 0x31.toByte(), //     USAGE (Y)
@@ -137,7 +137,7 @@ object HidConstants {
         0x81.toByte(), 0x02.toByte(), //   INPUT (Data,Var,Abs) -- Modifiers byte
         0x95.toByte(), 0x01.toByte(), //   REPORT_COUNT (1)
         0x75.toByte(), 0x08.toByte(), //   REPORT_SIZE (8)
-        0x81.toByte(), 0x01.toByte(), //   INPUT (Cnst,Var,Abs) -- Reserved byte
+        0x81.toByte(), 0x03.toByte(), //   INPUT (Cnst,Var,Abs) -- Reserved byte
         0x95.toByte(), 0x05.toByte(), //   REPORT_COUNT (5)
         0x75.toByte(), 0x01.toByte(), //   REPORT_SIZE (1)
         0x05.toByte(), 0x08.toByte(), //   USAGE_PAGE (LEDs)
@@ -146,7 +146,7 @@ object HidConstants {
         0x91.toByte(), 0x02.toByte(), //   OUTPUT (Data,Var,Abs)
         0x95.toByte(), 0x01.toByte(), //   REPORT_COUNT (1)
         0x75.toByte(), 0x03.toByte(), //   REPORT_SIZE (3)
-        0x91.toByte(), 0x01.toByte(), //   OUTPUT (Cnst,Var,Abs) -- LED padding
+        0x91.toByte(), 0x03.toByte(), //   OUTPUT (Cnst,Var,Abs) -- LED padding
         0x95.toByte(), 0x06.toByte(), //   REPORT_COUNT (6)
         0x75.toByte(), 0x08.toByte(), //   REPORT_SIZE (8)
         0x15.toByte(), 0x00.toByte(), //   LOGICAL_MINIMUM (0)

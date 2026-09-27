@@ -8,7 +8,10 @@ import android.bluetooth.BluetoothHidDeviceAppQosSettings
 import android.bluetooth.BluetoothHidDeviceAppSdpSettings
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.util.Log
 import com.antigravity.btremote.model.ConnectionStatus
@@ -77,13 +80,150 @@ class BluetoothHidManager(private val context: Context) {
         }
     }
 
+    private var isReceiverRegistered = false
+    private val bluetoothReceiver = object : BroadcastReceiver() {
+        @SuppressLint("MissingPermission")
+        override fun onReceive(ctx: Context?, intent: Intent?) {
+            val action = intent?.action ?: return
+            Log.d(TAG, "Bluetooth broadcast: $action")
+            when (action) {
+                BluetoothAdapter.ACTION_STATE_CHANGED -> {
+                    val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+                    when (state) {
+                        BluetoothAdapter.STATE_ON -> {
+                            Log.d(TAG, "Bluetooth turned ON, re-initializing HID")
+                            _status.value = ConnectionStatus.Disconnected
+                            init()
+                        }
+                        BluetoothAdapter.STATE_OFF, BluetoothAdapter.STATE_TURNING_OFF -> {
+                            Log.d(TAG, "Bluetooth turned OFF")
+                            _status.value = ConnectionStatus.BluetoothOff
+                            currentDevice = null
+                            isAppRegistered = false
+                        }
+                    }
+                }
+                BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
+                    val dev = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                    }
+                    val bondState = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.BOND_NONE)
+                    val prevBondState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, BluetoothDevice.BOND_NONE)
+                    Log.d(TAG, "Bond state changed for ${dev?.name}: $prevBondState -> $bondState")
+                    refreshPairedDevices()
+                    if (bondState == BluetoothDevice.BOND_BONDED && dev != null) {
+                        if (currentDevice == null) {
+                            Log.d(TAG, "Newly paired device bonded, auto-connecting to ${dev.name}")
+                            scope.launch {
+                                delay(800)
+                                connectToDevice(dev.address)
+                            }
+                        }
+                    } else if (bondState == BluetoothDevice.BOND_NONE && dev != null) {
+                        if (currentDevice?.address == dev.address) {
+                            currentDevice = null
+                            _status.value = ConnectionStatus.Disconnected
+                        }
+                    }
+                }
+                BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                    val dev = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                    }
+                    Log.d(TAG, "ACL Connected: ${dev?.name} (${dev?.address})")
+                    checkConnectedDevices()
+                    refreshPairedDevices()
+                }
+                BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
+                    val dev = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                    }
+                    Log.d(TAG, "ACL Disconnected: ${dev?.name}")
+                    if (dev != null && dev.address == currentDevice?.address) {
+                        currentDevice = null
+                        activeKeys.clear()
+                        currentMouseButtonMask = 0x00
+                        _status.value = ConnectionStatus.Disconnected
+                    }
+                    refreshPairedDevices()
+                }
+            }
+        }
+    }
+
+    private fun registerReceiver() {
+        if (!isReceiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+                addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+                addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+                addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+            }
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.registerReceiver(bluetoothReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                } else {
+                    context.registerReceiver(bluetoothReceiver, filter)
+                }
+                isReceiverRegistered = true
+                Log.d(TAG, "Bluetooth BroadcastReceiver registered")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to register Bluetooth BroadcastReceiver", e)
+            }
+        }
+    }
+
+    private fun unregisterReceiver() {
+        if (isReceiverRegistered) {
+            try {
+                context.unregisterReceiver(bluetoothReceiver)
+                isReceiverRegistered = false
+                Log.d(TAG, "Bluetooth BroadcastReceiver unregistered")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to unregister Bluetooth BroadcastReceiver", e)
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun checkConnectedDevices() {
+        val hid = hidDevice ?: return
+        try {
+            val connected = hid.connectedDevices
+            if (!connected.isNullOrEmpty()) {
+                val dev = connected.first()
+                currentDevice = dev
+                _status.value = ConnectionStatus.Connected(
+                    deviceName = dev.name ?: "Connected PC",
+                    address = dev.address
+                )
+                Log.d(TAG, "Found active connected HID device: ${dev.name} (${dev.address})")
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Permission missing checking connected devices", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking connected devices", e)
+        }
+    }
+
     private val profileListener = object : BluetoothProfile.ServiceListener {
         @SuppressLint("MissingPermission")
         override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
             if (profile == BluetoothProfile.HID_DEVICE) {
                 Log.d(TAG, "HID_DEVICE profile proxy connected")
                 hidDevice = proxy as BluetoothHidDevice
+                isInitializing = false
                 registerHidApp()
+                checkConnectedDevices()
                 refreshPairedDevices()
             }
         }
@@ -93,6 +233,7 @@ class BluetoothHidManager(private val context: Context) {
                 Log.d(TAG, "HID_DEVICE profile proxy disconnected")
                 hidDevice = null
                 isAppRegistered = false
+                isInitializing = false
                 activeKeys.clear()
                 currentMouseButtonMask = 0x00
                 _status.value = ConnectionStatus.Disconnected
@@ -105,18 +246,23 @@ class BluetoothHidManager(private val context: Context) {
         override fun onAppStatusChanged(pluggedDevice: BluetoothDevice?, registered: Boolean) {
             Log.d(TAG, "onAppStatusChanged: registered=$registered, device=${pluggedDevice?.name}")
             isAppRegistered = registered
-            if (registered && pluggedDevice != null) {
-                currentDevice = pluggedDevice
-                _status.value = ConnectionStatus.Connected(
-                    deviceName = pluggedDevice.name ?: "Connected PC",
-                    address = pluggedDevice.address
-                )
+            if (registered) {
+                checkConnectedDevices()
+                if (pluggedDevice != null) {
+                    currentDevice = pluggedDevice
+                    _status.value = ConnectionStatus.Connected(
+                        deviceName = pluggedDevice.name ?: "Connected PC",
+                        address = pluggedDevice.address
+                    )
+                }
+            } else {
+                Log.w(TAG, "onAppStatusChanged: HID App not registered")
             }
         }
 
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChanged(device: BluetoothDevice?, state: Int) {
-            Log.d(TAG, "onConnectionStateChanged: state=$state, device=${device?.name}")
+            Log.d(TAG, "onConnectionStateChanged: state=$state, device=${device?.name} (${device?.address})")
             when (state) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     currentDevice = device
@@ -133,13 +279,29 @@ class BluetoothHidManager(private val context: Context) {
                     _status.value = ConnectionStatus.Disconnecting
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
-                    currentDevice = null
-                    activeKeys.clear()
-                    currentMouseButtonMask = 0x00
-                    _status.value = ConnectionStatus.Disconnected
+                    if (currentDevice?.address == device?.address) {
+                        currentDevice = null
+                        activeKeys.clear()
+                        currentMouseButtonMask = 0x00
+                        _status.value = ConnectionStatus.Disconnected
+                    }
                     refreshPairedDevices()
                 }
             }
+        }
+
+        override fun onSetProtocol(device: BluetoothDevice?, protocol: Byte) {
+            Log.d(TAG, "onSetProtocol: protocol=$protocol")
+            hidDevice?.reportError(device, BluetoothHidDevice.ERROR_RSP_SUCCESS)
+        }
+
+        override fun onVirtualCableUnplug(device: BluetoothDevice?) {
+            Log.d(TAG, "onVirtualCableUnplug: $device")
+            currentDevice = null
+            activeKeys.clear()
+            currentMouseButtonMask = 0x00
+            _status.value = ConnectionStatus.Disconnected
+            refreshPairedDevices()
         }
 
         override fun onGetReport(device: BluetoothDevice?, type: Byte, id: Byte, bufferSize: Int) {
@@ -178,7 +340,10 @@ class BluetoothHidManager(private val context: Context) {
         }
     }
 
+    private var isInitializing = false
+
     fun init() {
+        registerReceiver()
         val adapter = bluetoothAdapter
         if (adapter == null) {
             _status.value = ConnectionStatus.Error("Bluetooth not available on this device")
@@ -189,23 +354,43 @@ class BluetoothHidManager(private val context: Context) {
             return
         }
 
+        if (hidDevice != null && isAppRegistered) {
+            Log.d(TAG, "HID Device already registered, checking connected devices")
+            checkConnectedDevices()
+            refreshPairedDevices()
+            return
+        }
+
+        if (isInitializing) {
+            Log.d(TAG, "HID Device initialization already in progress, skipping duplicate")
+            return
+        }
+
+        isInitializing = true
         try {
             val supported = adapter.getProfileProxy(context, profileListener, BluetoothProfile.HID_DEVICE)
             if (!supported) {
                 _status.value = ConnectionStatus.HidUnsupported
+                isInitializing = false
             }
         } catch (e: SecurityException) {
             Log.e(TAG, "Bluetooth permission missing", e)
             _status.value = ConnectionStatus.PermissionMissing
+            isInitializing = false
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get HID profile proxy", e)
             _status.value = ConnectionStatus.Error(e.message ?: "Failed to initialize HID profile")
+            isInitializing = false
         }
     }
 
     @SuppressLint("MissingPermission")
     private fun registerHidApp() {
         val hid = hidDevice ?: return
+        if (isAppRegistered) {
+            Log.d(TAG, "App is already registered as HID device")
+            return
+        }
         try {
             val sdp = BluetoothHidDeviceAppSdpSettings(
                 "PulsePad PC Remote",
@@ -214,9 +399,8 @@ class BluetoothHidManager(private val context: Context) {
                 BluetoothHidDevice.SUBCLASS1_COMBO,
                 HidConstants.HID_REPORT_DESCRIPTOR
             )
-            // Use null for inQos and outQos to let Android Bluetooth stack negotiate optimal standard QoS
-            hid.registerApp(sdp, null, null, executor, hidCallback)
-            Log.d(TAG, "registerApp called successfully with standard Bluetooth HID QoS")
+            val success = hid.registerApp(sdp, null, null, executor, hidCallback)
+            Log.d(TAG, "registerApp called: success=$success")
         } catch (e: SecurityException) {
             _status.value = ConnectionStatus.PermissionMissing
         } catch (e: Exception) {
@@ -229,11 +413,12 @@ class BluetoothHidManager(private val context: Context) {
         val adapter = bluetoothAdapter ?: return
         try {
             val bonded = adapter.bondedDevices ?: emptySet()
+            val connectedAddress = currentDevice?.address ?: hidDevice?.connectedDevices?.firstOrNull()?.address
             val list = bonded.map { dev ->
                 PairedDeviceItem(
                     name = dev.name ?: "Unknown Device",
                     address = dev.address,
-                    isConnected = dev.address == currentDevice?.address
+                    isConnected = dev.address == connectedAddress
                 )
             }
             _pairedDevices.value = list
@@ -245,15 +430,73 @@ class BluetoothHidManager(private val context: Context) {
     @SuppressLint("MissingPermission")
     fun connectToDevice(address: String) {
         val adapter = bluetoothAdapter ?: return
-        val hid = hidDevice ?: run {
-            _status.value = ConnectionStatus.Error("HID Profile not ready")
+        if (!adapter.isEnabled) {
+            _status.value = ConnectionStatus.BluetoothOff
             return
         }
+        val hid = hidDevice
+        if (hid == null) {
+            _status.value = ConnectionStatus.Error("HID Profile not ready. Initializing...")
+            init()
+            return
+        }
+
         try {
             val device = adapter.getRemoteDevice(address)
+            
+            // Check if already connected
+            val isAlreadyConnected = currentDevice?.address == address || 
+                hid.connectedDevices?.any { it.address == address } == true
+            if (isAlreadyConnected) {
+                currentDevice = device
+                _status.value = ConnectionStatus.Connected(device.name ?: "Connected PC", address)
+                refreshPairedDevices()
+                return
+            }
+
+            // Check bond state
+            if (device.bondState != BluetoothDevice.BOND_BONDED) {
+                _status.value = ConnectionStatus.Connecting("Pairing with ${device.name ?: "PC"}...")
+                val bonding = device.createBond()
+                Log.d(TAG, "Device not bonded, initiating createBond(): $bonding")
+                return
+            }
+
             _status.value = ConnectionStatus.Connecting(device.name ?: "PC")
             val success = hid.connect(device)
             Log.d(TAG, "Connecting to ${device.name} ($address): success=$success")
+            
+            if (!success) {
+                // If connect returns false, check if device was actually already connected
+                if (hid.connectedDevices?.any { it.address == address } == true) {
+                    currentDevice = device
+                    _status.value = ConnectionStatus.Connected(device.name ?: "Connected PC", address)
+                    refreshPairedDevices()
+                    return
+                }
+
+                _status.value = ConnectionStatus.Error("Connection rejected. Ensure PC has Bluetooth ON and is paired.")
+                scope.launch {
+                    delay(3500)
+                    if (_status.value is ConnectionStatus.Error) {
+                        _status.value = ConnectionStatus.Disconnected
+                    }
+                }
+                return
+            }
+
+            // Connection watchdog timeout: if still Connecting after 12s, abort
+            scope.launch {
+                delay(12000)
+                if (_status.value is ConnectionStatus.Connecting) {
+                    Log.w(TAG, "Connection attempt timed out for $address")
+                    _status.value = ConnectionStatus.Error("Connection timed out. Open Windows Bluetooth Settings and click Connect.")
+                    delay(3500)
+                    if (_status.value is ConnectionStatus.Error) {
+                        _status.value = ConnectionStatus.Disconnected
+                    }
+                }
+            }
         } catch (e: SecurityException) {
             _status.value = ConnectionStatus.PermissionMissing
         } catch (e: Exception) {
@@ -264,9 +507,11 @@ class BluetoothHidManager(private val context: Context) {
     @SuppressLint("MissingPermission")
     fun disconnect() {
         val hid = hidDevice ?: return
-        val dev = currentDevice ?: return
+        val dev = currentDevice ?: hid.connectedDevices?.firstOrNull() ?: return
         try {
-            hid.disconnect(dev)
+            _status.value = ConnectionStatus.Disconnecting
+            val success = hid.disconnect(dev)
+            Log.d(TAG, "hid.disconnect: success=$success")
         } catch (e: Exception) {
             Log.e(TAG, "Error disconnecting", e)
         }
@@ -492,6 +737,7 @@ class BluetoothHidManager(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     fun cleanup() {
+        unregisterReceiver()
         val hid = hidDevice ?: return
         try {
             hid.unregisterApp()
@@ -500,5 +746,7 @@ class BluetoothHidManager(private val context: Context) {
             Log.e(TAG, "Error cleaning up HID", e)
         }
         hidDevice = null
+        isAppRegistered = false
+        isInitializing = false
     }
 }

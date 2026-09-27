@@ -328,13 +328,14 @@ fun MainScreen(
     if (showPairingDialog) {
         PairingDialog(
             pairedDevices = pairedDevices,
+            phoneName = hidManager.bluetoothAdapter?.name ?: "PulsePad Remote",
             onDeviceSelected = { address ->
                 hidManager.connectToDevice(address)
                 showPairingDialog = false
             },
             onMakeDiscoverable = {
                 val discoverableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
-                    putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 120)
+                    putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
                 }
                 discoverableLauncher.launch(discoverableIntent)
             },
